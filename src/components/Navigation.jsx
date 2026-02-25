@@ -10,6 +10,11 @@ export default function Navigation() {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+  await supabase.auth.signOut();
+  navigate("/login");
+};
+
   useEffect(() => {
     if (user) {
       fetchProfile();
@@ -73,6 +78,12 @@ export default function Navigation() {
                     <NavLink to="/map">Mapa</NavLink>
                     <NavLink to="/events">Eventos</NavLink>
                     <NavLink to="/favorites">Favoritos</NavLink>
+                    <button 
+  onClick={handleLogout}
+  className="flex flex-col items-center text-red-400 text-xs"
+>
+  Salir
+</button>
                   </>
                 )
               )}
