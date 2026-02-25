@@ -132,6 +132,10 @@ export default function Navigation() {
               <MobileBottomLink to="/dashboard" label="Panel" />
               <MobileBottomLink to="/stats" label="Stats" />
               <MobileBottomLink to="/register-venue" label="Registro" />
+              <button onClick={handleLogout}
+                    className="flex flex-col items-center text-red-400 text-xs">
+                     Salir
+                    </button>
             </>
           ) : (
             <>
