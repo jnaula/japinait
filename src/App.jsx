@@ -19,7 +19,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 export default function App() {
   return (
       <Router>
-        <div className="min-h-screen bg-[#0a0a0a]">
+        <div className="min-h-screen bg-[#0a0a0a] pb-16 md:pb-0">
           <Navigation />
           <Routes>
             {/* Public Routes */}
