@@ -78,12 +78,6 @@ export default function Navigation() {
                     <NavLink to="/map">Mapa</NavLink>
                     <NavLink to="/events">Eventos</NavLink>
                     <NavLink to="/favorites">Favoritos</NavLink>
-                    <button 
-  onClick={handleLogout}
-  className="flex flex-col items-center text-red-400 text-xs"
->
-  Salir
-</button>
                   </>
                 )
               )}
@@ -145,6 +139,10 @@ export default function Navigation() {
               <MobileBottomLink to="/map" label="Mapa" />
               <MobileBottomLink to="/events" label="Eventos" />
               <MobileBottomLink to="/favorites" label="Favoritos" />
+               <button onClick={handleLogout}
+                    className="flex flex-col items-center text-red-400 text-xs">
+                     Salir
+                    </button>
             </>
           )}
         </div>
