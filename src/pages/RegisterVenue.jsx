@@ -102,7 +102,7 @@ export default function RegisterVenue() {
         .getPublicUrl(fileName);
 
       uploadedUrls.push({
-        url: urlData.publicUrl,
+        url: fileName,
         isPrimary: photo.isPrimary || i === 0,
         orderIndex: i,
       });
@@ -138,6 +138,7 @@ export default function RegisterVenue() {
             status: 'approved',
             latitude: parseFloat(formData.latitude),
             longitude: parseFloat(formData.longitude),
+            
           },
         ])
         .select()
