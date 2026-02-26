@@ -13,6 +13,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
+// 🔥 Convertir path de Supabase Storage a URL pública
+const getImageUrl = (path) => {
+  if (!path) return null;
+
+  const { data } = supabase.storage
+    .from('venue-photos')
+    .getPublicUrl(path);
+
+  return data?.publicUrl;
+};
+
+  
   useEffect(() => {
     if (user) {
       fetchProfile();
@@ -235,12 +247,12 @@ export default function Dashboard() {
                 className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl overflow-hidden hover:border-[#2a2a2a] transition-colors"
               >
                 {venue.primary_photo && (
-                  <img
-                    src={venue.primary_photo}
-                    alt={venue.name}
-                    className="w-full h-48 object-cover"
-                  />
-                )}
+                <img
+                  src={getImageUrl(venue.primary_photo)}
+                 alt={venue.name}
+                  className="w-full h-48 object-cover"
+                 />
+                 )}
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg font-semibold text-white">{venue.name}</h3>
