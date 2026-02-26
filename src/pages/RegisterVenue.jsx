@@ -126,7 +126,8 @@ export default function RegisterVenue() {
       
       // Validate venue_type_id is a valid UUID or null (though required)
       const venueTypeId = formData.venue_type_id && formData.venue_type_id.length > 0 ? formData.venue_type_id : null;
-      
+      console.log("USER COMPLETO:", user);
+      console.log("USER ID:", user?.id);
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
         .insert([
