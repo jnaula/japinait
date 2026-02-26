@@ -10,7 +10,7 @@ export default function Navigation() {
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
 
-  if(loading) return null;
+  
 
   const handleLogout = async () => {
   await supabase.auth.signOut();
