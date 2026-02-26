@@ -32,46 +32,46 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signUp = async (email, password, fullName, role = 'user') => {
-    try {
-      // 1. Create auth user
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            role: role
-          }
+  try {
+    const { data: authData, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: role
         }
+      }
+    });
+
+    if (error) throw error;
+    if (!authData.user) throw new Error('Failed to create account');
+
+    // Crear perfil
+    await supabase
+      .from('profiles')
+      .upsert({
+        id: authData.user.id,
+        email,
+        full_name: fullName,
+        role,
+        updated_at: new Date().toISOString(),
       });
 
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Failed to create account');
+    // 🔥 IMPORTANTE: actualizar el estado inmediatamente
+    setUser(authData.user);
 
-      // 2. Create profile
-      // Note: We use upsert to handle potential race conditions or re-signups
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          email,
-          full_name: fullName,
-          role,
-          updated_at: new Date().toISOString(),
-        });
+    return { 
+      data: authData, 
+      session: authData.session, 
+      error: null 
+    };
 
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // We continue even if profile fails, but log it
-      }
-
-      return { data: authData, error: null };
-    } catch (err) {
-      console.error('Signup error:', err);
-      return { data: null, error: err };
-    }
-  };
-
+  } catch (err) {
+    console.error('Signup error:', err);
+    return { data: null, session: null, error: err };
+  }
+};
   const signIn = async ({ email, password }) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
