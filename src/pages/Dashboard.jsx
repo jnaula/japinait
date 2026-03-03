@@ -14,15 +14,7 @@ export default function Dashboard() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
 // 🔥 Convertir path de Supabase Storage a URL pública
-const getImageUrl = (path) => {
-  if (!path) return null;
 
-  const { data } = supabase.storage
-    .from('venue-photos')
-    .getPublicUrl(path);
-
-  return data?.publicUrl;
-};
 
   
   useEffect(() => {
@@ -248,7 +240,7 @@ const getImageUrl = (path) => {
               >
                 {venue.primary_photo && (
                 <img
-                  src={getImageUrl(venue.primary_photo)}
+                  src={venue.primary_photo}
                  alt={venue.name}
                   className="w-full h-48 object-cover"
                  />
