@@ -14,6 +14,9 @@ export default function Dashboard() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
 // 🔥 Convertir path de Supabase Storage a URL pública
+console.log("Primary photo path:", venue.primary_photo);
+console.log("Generated public URL:", imageUrl);
+
 const imageUrl = venue.primary_photo
   ? supabase.storage
       .from('venue-photos')
