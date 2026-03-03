@@ -128,23 +128,29 @@ export default function RegisterVenue() {
       const venueTypeId = formData.venue_type_id && formData.venue_type_id.length > 0 ? formData.venue_type_id : null;
       console.log("USER COMPLETO:", user);
       console.log("USER ID:", user?.id);
-      const { data: venueData, error: venueError } = await supabase
-        .from('venues')
-        .insert([
-          {
-            ...formData,
-            owner_id: user.id,
-            venue_type_id: venueTypeId,
-            status: 'approved',
-            latitude: parseFloat(formData.latitude),
-            longitude: parseFloat(formData.longitude),
-            
-          },
-        ])
-        .select()
-        .single();
+  const { data: venueData, error: venueError } = await supabase
+  .from('venues')
+  .insert([
+    {
+      ...formData,
+      opening_hours: JSON.stringify(formData.opening_hours),
+      owner_id: user.id,
+      venue_type_id: venueTypeId,
+      status: 'approved',
+      latitude: parseFloat(formData.latitude),
+      longitude: parseFloat(formData.longitude),
+    },
+  ])
+  .select()
+  .single();
 
-      if (venueError) throw venueError;
+console.log("VENUE DATA:", venueData);
+console.log("VENUE ERROR:", venueError);
+
+if (venueError) {
+  alert("ERROR INSERT VENUE: " + JSON.stringify(venueError));
+  return; // 🔥 IMPORTANTE
+}
 
       console.log('RegisterVenue: Venue registered successfully:', venueData);
 
