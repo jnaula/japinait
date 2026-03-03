@@ -166,14 +166,16 @@ if (venueError) {
         }));
 
         const { error: photosError } = await supabase
-          .from('venue_photos')
-          .insert(photoRecords);
+  .from('venue_photos')
+  .insert(photoRecords);
 
-        if (photosError) {
-          console.error('RegisterVenue: Error saving photo records:', photosError);
-        } else {
-          console.log('RegisterVenue: Photos saved successfully');
-        }
+console.log("PHOTO RECORDS:", photoRecords);
+console.log("PHOTOS ERROR:", photosError);
+
+if (photosError) {
+  alert("ERROR INSERT PHOTOS: " + JSON.stringify(photosError));
+  return; // 🔥 IMPORTANTE
+}
       }
 
       alert('Local registrado exitosamente.');
