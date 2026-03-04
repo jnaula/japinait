@@ -142,42 +142,46 @@ export default function VenueDetail() {
     }
   };
 
-  const toggleFavorite = async () => {
-    if (!user) {
-      alert('Por favor inicia sesión para agregar a favoritos');
-      return;
-    }
+const toggleFavorite = async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    try {
-      if (isFavorite) {
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('id', favoriteId);
+  if (!user) {
+    alert('Por favor inicia sesión para agregar favoritos');
+    return;
+  }
 
-        if (!error) {
-          setIsFavorite(false);
-          setFavoriteId(null);
-        }
-      } else {
-        const { data, error } = await supabase
-          .from('favorites')
-          .insert({
-            user_id: user.id,
-            venue_id: id,
-          })
-          .select()
-          .single();
+  setLoading(true);
 
-        if (!error && data) {
-          setIsFavorite(true);
-          setFavoriteId(data.id);
-        }
+  try {
+    if (isFavorite) {
+      const { error } = await supabase
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('venue_id', venue.id);
+
+      if (!error) {
+        setIsFavorite(false);
       }
-    } catch (err) {
-      console.error('VenueDetail: Error toggling favorite:', err);
+    } else {
+      const { error } = await supabase
+        .from('user_favorites')
+        .insert({
+          user_id: user.id,
+          venue_id: venue.id,
+        });
+
+      if (!error) {
+        setIsFavorite(true);
+      }
     }
-  };
+  } catch (err) {
+    console.error('VenueDetail: Error toggling favorite:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
