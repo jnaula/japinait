@@ -13,17 +13,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
-// 🔥 Convertir path de Supabase Storage a URL pública
-console.log("Primary photo path:", venue.primary_photo);
-console.log("Generated public URL:", imageUrl);
-
-const imageUrl = venue.primary_photo
-  ? supabase.storage
-      .from('venue-photos')
-      .getPublicUrl(venue.primary_photo).data.publicUrl
-  : null;
-
-  
+// 🔥 Convertir path de Supabase Storage a URL pública  
   useEffect(() => {
     if (user) {
       fetchProfile();
@@ -237,21 +227,34 @@ const imageUrl = venue.primary_photo
           </motion.div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myVenues.map((venue, index) => (
-              <motion.div
-                key={venue.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl overflow-hidden hover:border-[#2a2a2a] transition-colors"
-              >
-                {venue.primary_photo && (
+            {myVenues.map((venue, index) => {
+
+  const imageUrl = venue.primary_photo
+    ? supabase
+        .storage
+        .from('venue-photos')
+        .getPublicUrl(venue.primary_photo).data.publicUrl
+    : null;
+
+  return (
+    <motion.div
+      key={venue.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl overflow-hidden hover:border-[#2a2a2a] transition-colors"
+    >
+                {imageUrl ? (
                 <img
-                  src={imageUrl}
-                 alt={venue.name}
+                 src={imageUrl}
+                  alt={venue.name}
                   className="w-full h-48 object-cover"
                  />
-                 )}
+                 ) : (
+                 <div className="w-full h-48 bg-[#111] flex items-center justify-center text-gray-500 text-sm">
+                  Sin imagen
+                 </div>
+                  )}
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-lg font-semibold text-white">{venue.name}</h3>
@@ -288,7 +291,8 @@ const imageUrl = venue.primary_photo
                   </div>
                 </div>
               </motion.div>
-            ))}
+              );
+              })}
           </div>
         )}
 
