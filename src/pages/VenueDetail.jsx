@@ -230,16 +230,23 @@ export default function VenueDetail() {
 
   const primaryPhoto = photos.find((p) => p.is_primary) || photos[0];
 
+const primaryImageUrl = primaryPhoto
+  ? supabase
+      .storage
+      .from('venue-photos')
+      .getPublicUrl(primaryPhoto.photo_url).data.publicUrl
+  : null;
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="relative h-96 bg-[#1a1a1a] overflow-hidden">
-        {primaryPhoto ? (
-          <img
-            src={primaryPhoto.photo_url}
-            alt={venue.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
+        {primaryImageUrl ? (
+  <img
+    src={primaryImageUrl}
+    alt={venue.name}
+    className="w-full h-full object-cover"
+  />
+) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff0080] to-[#7928ca] opacity-20">
             <MapPin className="w-32 h-32 text-white" />
           </div>
@@ -370,19 +377,26 @@ export default function VenueDetail() {
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-white mb-4">Fotos</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {photos.map((photo) => (
-                  <motion.div
-                    key={photo.id}
-                    whileHover={{ scale: 1.05 }}
-                    className="aspect-square rounded-lg overflow-hidden bg-[#1a1a1a]"
-                  >
-                    <img
-                      src={photo.photo_url}
-                      alt={venue.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </motion.div>
-                ))}
+                {photos.map((photo) => {
+  const imageUrl = supabase
+    .storage
+    .from('venue-photos')
+    .getPublicUrl(photo.photo_url).data.publicUrl;
+
+  return (
+    <motion.div
+      key={photo.id}
+      whileHover={{ scale: 1.05 }}
+      className="aspect-square rounded-lg overflow-hidden bg-[#1a1a1a]"
+    >
+      <img
+        src={imageUrl}
+        alt={venue.name}
+        className="w-full h-full object-cover"
+      />
+    </motion.div>
+  );
+})}
               </div>
             </div>
           )}
