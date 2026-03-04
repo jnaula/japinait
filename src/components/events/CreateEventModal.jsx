@@ -14,7 +14,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
     description: '',
     event_date: '',
     venue_id: '',
-    image_url: '',
+    photo_url: '',
   });
 
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
       const { data } = supabase.storage.from('events').getPublicUrl(filePath);
       console.log('CreateEventModal: Image uploaded, URL:', data.publicUrl);
 
-      setFormData((prev) => ({ ...prev, image_url: data.publicUrl }));
+      setFormData((prev) => ({ ...prev, photo_url_url: data.publicUrl }));
     } catch (error) {
       console.error('CreateEventModal: Error uploading image:', error);
       alert('Error al subir la imagen: ' + error.message);
@@ -102,7 +102,7 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
         description: '',
         event_date: '',
         venue_id: '',
-        image_url: '',
+        photo_url: '',
       });
     } catch (err) {
       console.error('CreateEventModal: Error creating event:', err);
@@ -232,16 +232,16 @@ export default function CreateEventModal({ isOpen, onClose, onEventCreated }) {
                     cursor-pointer"
                 />
                 {uploading && <p className="text-sm text-yellow-500">Subiendo imagen...</p>}
-                {formData.image_url && (
+                {formData.photo_url && (
                   <div className="relative w-full h-48 rounded-lg overflow-hidden border border-[#2a2a2a]">
                     <img
-                      src={formData.image_url}
+                      src={formData.photo_url}
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+                      onClick={() => setFormData(prev => ({ ...prev, im_url: '' }))}
                       className="absolute top-2 right-2 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
                     >
                       <X className="w-4 h-4 text-white" />
