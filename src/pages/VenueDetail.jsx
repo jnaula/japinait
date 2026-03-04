@@ -66,7 +66,7 @@ export default function VenueDetail() {
     }
   }, [user, id]);
 
-  const incrementViewCount = async () => {
+  /*const incrementViewCount = async () => {
     try {
       await supabase.rpc('increment', {
         table_name: 'venues',
@@ -77,6 +77,7 @@ export default function VenueDetail() {
       console.log('VenueDetail: Could not increment view count');
     }
   };
+  */
 
   const fetchVenueDetails = async () => {
     setLoading(true);
