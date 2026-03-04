@@ -21,22 +21,20 @@ export default function Favorites() {
     try {
       console.log('Favorites: Fetching user favorites...');
       const { data, error } = await supabase
-        .from('favorites')
-        .select(`
-          id,
-          created_at,
-          venues(
-            *,
-            venue_types(name),
-            venue_photos(photo_url, is_primary)
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      console.log('Favorites: User favorites fetched:', data);
+  .from('user_favorites')
+  .select(`
+    id,
+    created_at,
+    venue_id,
+    venues(
+      *,
+      venue_types(name),
+      venue_photos(photo_url, is_primary)
+    )
+  `)
+  .eq('user_id', user.id)
+  .not('venue_id', 'is', null)
+  .order('created_at', { ascending: false });
 
       const processedFavorites = data.map((fav) => {
         const venue = fav.venues;
@@ -57,24 +55,23 @@ export default function Favorites() {
       setLoading(false);
     }
   };
+const handleRemoveFavorite = async (venueId) => {
+  try {
+    const { error } = await supabase
+      .from('user_favorites')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('venue_id', venueId);
 
-  const handleRemoveFavorite = async (favoriteId) => {
-    try {
-      console.log('Favorites: Removing favorite:', favoriteId);
-      const { error } = await supabase
-        .from('favorites')
-        .delete()
-        .eq('id', favoriteId);
+    if (error) throw error;
 
-      if (error) throw error;
-
-      console.log('Favorites: Favorite removed successfully');
-      setFavorites((prev) => prev.filter((fav) => fav.favorite_id !== favoriteId));
-    } catch (err) {
-      console.error('Favorites: Error removing favorite:', err);
-      alert('Error al eliminar el favorito: ' + err.message);
-    }
-  };
+    setFavorites((prev) =>
+      prev.filter((fav) => fav.id !== venueId)
+    );
+  } catch (err) {
+    console.error('Favorites: Error removing favorite:', err);
+  }
+};
 
   if (!user) {
     return (
@@ -143,7 +140,7 @@ export default function Favorites() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => handleRemoveFavorite(venue.favorite_id)}
+                  onClick={() => handleRemoveFavorite(venue.id)}
                   className="absolute top-4 right-4 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg transition-colors z-10"
                   title="Remove from favorites"
                 >
