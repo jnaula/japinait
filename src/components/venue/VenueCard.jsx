@@ -42,49 +42,46 @@ export default function VenueCard({ venue }) {
     }
   };
 
-  const toggleFavorite = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+const toggleFavorite = async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    if (!user) {
-      alert('Por favor inicia sesión para agregar favoritos');
-      return;
-    }
+  if (!user) {
+    alert('Por favor inicia sesión para agregar favoritos');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      if (isFavorite) {
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('id', favoriteId);
+  try {
+    if (isFavorite) {
+      const { error } = await supabase
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('venue_id', venue.id);
 
-        if (!error) {
-          setIsFavorite(false);
-          setFavoriteId(null);
-        }
-      } else {
-        const { data, error } = await supabase
-          .from('favorites')
-          .insert({
-            user_id: user.id,
-            venue_id: venue.id,
-          })
-          .select()
-          .single();
-
-        if (!error && data) {
-          setIsFavorite(true);
-          setFavoriteId(data.id);
-        }
+      if (!error) {
+        setIsFavorite(false);
       }
-    } catch (err) {
-      console.error('VenueCard: Error toggling favorite:', err);
-    } finally {
-      setLoading(false);
+    } else {
+      const { error } = await supabase
+        .from('user_favorites')
+        .insert({
+          user_id: user.id,
+          venue_id: venue.id,
+        });
+
+      if (!error) {
+        setIsFavorite(true);
+      }
     }
-  };
+  } catch (err) {
+    console.error('VenueCard: Error toggling favorite:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Link to={`/venue/${venue.id}`}>
