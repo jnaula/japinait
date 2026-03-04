@@ -57,7 +57,7 @@ export default function VenueDetail() {
 
   useEffect(() => {
     fetchVenueDetails();
-    incrementViewCount();
+    //incrementViewCount();
   }, [id]);
 
   useEffect(() => {
