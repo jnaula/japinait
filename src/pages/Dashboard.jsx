@@ -21,7 +21,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (myVenues.length > 0) {
-      fetchMyEvents();
+      fetchMyEvents(myVenues);
     }
   }, [myVenues]);
 
@@ -35,16 +35,23 @@ export default function Dashboard() {
     setLoading(false);
   }
 
-  async function fetchMyEvents() {
-    const venueIds = myVenues.map((v) => v.id);
+  async function fetchMyEvents(venues) {
+  const venueIds = venues.map((v) => v.id);
 
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .in('venue_id', venueIds);
-
-    if (!error) setMyEvents(data);
+  if (venueIds.length === 0) {
+    setMyEvents([]);
+    return;
   }
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .in('venue_id', venueIds);
+
+  if (!error) {
+    setMyEvents(data);
+  }
+}
 
   function handleCreateEvent(venue) {
     setSelectedVenue(venue);
