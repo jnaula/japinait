@@ -88,7 +88,7 @@ export default function Dashboard() {
 
             <div className="mt-4 flex items-center justify-between">
               <button
-                onClick={() => navigate('/venues/${venue.id}/edit')}
+                onClick={() => navigate(`/venues/${venue.id}/edit`)}
                 className="text-xs px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md"
               >
                 Editar
