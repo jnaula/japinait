@@ -91,7 +91,7 @@ export default function EditVenue() {
 
     // Subir fotos nuevas
     for (const file of photos) {
-      const fileName = ${id}/${Date.now()}_${file.name};
+      const fileName = `${id}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage
         .from('venue-photos')
         .upload(fileName, file);
@@ -108,7 +108,7 @@ export default function EditVenue() {
     }
 
     alert('Actualizado correctamente 🔥');
-    navigate(/venue/${id});
+    navigate(`/venue/${id}`);
   }
 
   if (loading) {
