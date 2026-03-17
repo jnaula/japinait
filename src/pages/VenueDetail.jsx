@@ -45,10 +45,10 @@ const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'sat
 
 export default function VenueDetail() {
   const { id } = useParams();
-  const isOwner = venue?.owner_id === user?.id;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [venue, setVenue] = useState(null);
+  const isOwner = venue && user && venue.owner_id == user.id;
   const [photos, setPhotos] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
