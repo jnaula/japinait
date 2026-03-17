@@ -54,7 +54,7 @@ export default function App() {
               } 
             />
             <Route
-              path="/edit-venue/:id"
+              path="/venue/:id"
               element={
                 <ProtectedRoute>
                   <EditVenue />
