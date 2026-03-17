@@ -22,7 +22,7 @@ export default function App() {
       <Router>
         <div className="min-h-screen bg-[#0a0a0a] pb-16 md:pb-0">
           <Navigation />
-          <Routes>
+          <Routes key={window.location.pathname}>
             {/* Public Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
