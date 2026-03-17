@@ -5,7 +5,7 @@ import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit } 
 import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Edit } from 'lucide-react';
+
 
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
