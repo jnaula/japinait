@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Building2, Calendar, Heart, MapPin, Eye, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -7,6 +8,7 @@ import CreateEventModal from '../components/events/CreateEventModal';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [myVenues, setMyVenues] = useState([]);
   const [myEvents, setMyEvents] = useState([]);
@@ -239,6 +241,8 @@ export default function Dashboard() {
   return (
     <motion.div
       key={venue.id}
+      onClick={() => navigate(`/venue/${venue.id}`)}
+      
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}

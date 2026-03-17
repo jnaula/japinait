@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send } from 'lucide-react';
+import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -267,7 +267,15 @@ const primaryImageUrl = primaryPhoto
             <span>Volver</span>
           </motion.button>
         </div>
-        <div className="absolute top-6 right-6">
+        <div className="absolute top-6 right-6 flex items-center space-x-2">
+          <motion.button
+           whileHover={{ scale: 1.1 }}
+           whileTap={{ scale: 0.9 }}
+           onClick={() => navigate(`/edit-venue/${venue.id}`)}
+           className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70"
+          >
+            <Edit className="w-6 h-6 text-white" />
+           </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
