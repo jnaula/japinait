@@ -65,9 +65,7 @@ export default function App() {
             <Route
               path="/venue/:id"
               element={
-                <ProtectedRoute>
                   <EditVenue />
-                  </ProtectedRoute>
               }           
             />
             <Route 
