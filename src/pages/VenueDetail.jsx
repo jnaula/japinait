@@ -274,7 +274,7 @@ const primaryImageUrl = primaryPhoto
           <motion.button
            whileHover={{ scale: 1.1 }}
            whileTap={{ scale: 0.9 }}
-           onClick={() => navigate(`/edit-venue/${venue.id}`)}
+           onClick={() => navigate(`/venue/${venue.id}/edit`)}
            className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70"
           >
             <Edit className="w-6 h-6 text-white" />
