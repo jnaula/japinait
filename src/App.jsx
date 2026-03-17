@@ -15,7 +15,7 @@ import Favorites from './pages/Favorites';
 import AdminPanel from './pages/AdminPanel';
 import Stats from './pages/Stats';
 import ProtectedRoute from './components/ProtectedRoute';
-import EditVenue from './pages/EditVenues';
+import EditVenue from './pages/EditVenue';
 
 export default function App() {
   return (
@@ -57,7 +57,7 @@ export default function App() {
               path="/edit-venue/:id"
               element={
                 <ProtectedRoute>
-                  <EditVenue/>
+                  <EditVenue />
                   </ProtectedRoute>
               }           
             />
