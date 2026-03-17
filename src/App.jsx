@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
 import MapPage from './pages/MapPage';
@@ -18,6 +19,14 @@ import ProtectedRoute from './components/ProtectedRoute';
 import EditVenue from './pages/EditVenue';
 
 export default function App() {
+  const{ loading } = useAuth();
+  if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+      <div className="w-8 h-8 border-4 border-[#ff0080] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
   return (
       <Router>
         <div className="min-h-screen bg-[#0a0a0a] pb-16 md:pb-0">
