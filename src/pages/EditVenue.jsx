@@ -1,32 +1,34 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
+import { Trash2, Plus } from 'lucide-react';
+
+const GOOGLE_MAPS_API_KEY = 'TU_GOOGLE_MAPS_API_KEY_AQUI'; // Pon tu API Key de Google
 
 export default function EditVenue() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Estados del venue
   const [venue, setVenue] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [venueTypes, setVenueTypes] = useState([]);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [venueType, setVenueType] = useState('');
-  const [photos, setPhotos] = useState([]); // fotos nuevas
-  const [existingPhotos, setExistingPhotos] = useState([]); // fotos existentes
-  const [venueTypes, setVenueTypes] = useState([]); // opciones del select
+  const [latitude, setLatitude] = useState(-0.1807);
+  const [longitude, setLongitude] = useState(-78.4678);
 
-  // Cargar datos
+  const [photos, setPhotos] = useState([]);
+  const [existingPhotos, setExistingPhotos] = useState([]);
+
   useEffect(() => {
-    if (id) {
-      fetchVenue();
-      fetchVenueTypes();
-    }
+    fetchVenue();
+    fetchVenueTypes();
   }, [id]);
 
-  // Fetch venue
   async function fetchVenue() {
     try {
       const { data, error } = await supabase
@@ -34,183 +36,183 @@ export default function EditVenue() {
         .select('*')
         .eq('id', id)
         .single();
-
       if (error) throw error;
 
       setVenue(data);
-      setName(data.name || '');
-      setDescription(data.description || '');
-      setAddress(data.address || '');
-      setVenueType(data.venue_type_id || '');
+      setName(data.name);
+      setDescription(data.description);
+      setAddress(data.address);
+      setVenueType(data.venue_type_id);
+      setLatitude(data.latitude || -0.1807);
+      setLongitude(data.longitude || -78.4678);
 
-      // Cargar fotos existentes
-      const { data: photosData, error: photosError } = await supabase
+      const { data: photosData } = await supabase
         .from('venue_photos')
         .select('*')
         .eq('venue_id', id)
         .order('order_index');
-
-      if (!photosError && photosData) setExistingPhotos(photosData);
+      setExistingPhotos(photosData || []);
     } catch (err) {
-      console.error('Error cargando venue:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
-  // Fetch tipos de local
   async function fetchVenueTypes() {
-    const { data, error } = await supabase.from('venue_types').select('*');
-    if (!error && data) setVenueTypes(data);
+    const { data } = await supabase.from('venue_types').select('*');
+    if (data) setVenueTypes(data);
   }
 
-  // Actualizar venue
-  async function handleUpdate() {
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await response.json();
+      if (data.status === 'OK' && data.results.length > 0) {
+        setAddress(data.results[0].formatted_address);
+      }
+    } catch (err) {
+      console.error('Geocoding error:', err);
+    }
+  };
+
+  const handleUpdate = async () => {
     if (!name || !address || !venueType) {
-      alert('Por favor completa nombre, dirección y tipo de local.');
+      alert('Completa nombre, dirección y tipo de local');
       return;
     }
-
-    const updates = {
-      name,
-      description,
-      address,
-      venue_type_id: venueType,
-    };
 
     const { error } = await supabase
       .from('venues')
-      .update(updates)
+      .update({ name, description, address, venue_type_id: venueType, latitude, longitude })
       .eq('id', id);
+    if (error) return alert('Error al actualizar');
 
-    if (error) {
-      console.error('Error actualizando:', error);
-      alert('Error al actualizar ❌');
-      return;
-    }
-
-    // Subir fotos nuevas
     for (const file of photos) {
       const fileName = `${id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('venue-photos')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        console.error('Error subiendo foto:', uploadError);
-      } else {
-        await supabase.from('venue_photos').insert({
-          venue_id: id,
-          photo_url: fileName,
-          is_primary: false,
-        });
+      const { error: uploadError } = await supabase.storage.from('venue-photos').upload(fileName, file);
+      if (!uploadError) {
+        await supabase.from('venue_photos').insert({ venue_id: id, photo_url: fileName, is_primary: false });
       }
     }
 
-    alert('Actualizado correctamente 🔥');
+    alert('Local actualizado 🔥');
     navigate(`/venue/${id}`);
-  }
+  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <p>Cargando...</p>
-      </div>
-    );
-  }
+  const handleDeletePhoto = async (photoId) => {
+    if (!confirm('¿Eliminar foto?')) return;
+    const { error } = await supabase.from('venue_photos').delete().eq('id', photoId);
+    if (!error) setExistingPhotos(existingPhotos.filter((p) => p.id !== photoId));
+  };
 
-  if (!venue) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <p>No encontrado</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-4 text-white">Cargando...</div>;
+  if (!venue) return <div className="p-4 text-white">No encontrado</div>;
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Editar Local</h1>
-      <div className="space-y-4">
+    <div className="min-h-screen bg-black text-white p-4 max-w-3xl mx-auto space-y-4">
+      <h1 className="text-2xl font-bold mb-4">Editar Local</h1>
 
-        {/* Nombre */}
-        <div>
-          <label className="block mb-1 text-sm text-gray-400">Nombre</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
-          />
-        </div>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Nombre"
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      />
 
-        {/* Descripción */}
-        <div>
-          <label className="block mb-1 text-sm text-gray-400">Descripción</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
-            className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
-          />
-        </div>
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={4}
+        placeholder="Descripción"
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      />
 
-        {/* Dirección */}
-        <div>
-          <label className="block mb-1 text-sm text-gray-400">Dirección</label>
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
-          />
-        </div>
+      <input
+        type="text"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        placeholder="Dirección"
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      />
 
-        {/* Tipo de Local */}
-        <div>
-          <label className="block mb-1 text-sm text-gray-400">Tipo de Local</label>
-          <select
-            value={venueType}
-            onChange={(e) => setVenueType(e.target.value)}
-            className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      <select
+        value={venueType}
+        onChange={(e) => setVenueType(e.target.value)}
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      >
+        <option value="">Selecciona un tipo</option>
+        {venueTypes.map((t) => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+
+      <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
+        <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+          <Map
+            defaultZoom={15}
+            defaultCenter={{ lat: latitude, lng: longitude }}
+            options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+            onClick={(e) => {
+              const lat = e.latLng.lat();
+              const lng = e.latLng.lng();
+              setLatitude(lat);
+              setLongitude(lng);
+              reverseGeocode(lat, lng);
+            }}
           >
-            <option value="">Selecciona un tipo</option>
-            {venueTypes.map((type) => (
-              <option key={type.id} value={type.id}>{type.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Fotos */}
-        <div>
-          <label className="block mb-1 text-sm text-gray-400">Fotos</label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => setPhotos([...e.target.files])}
-            className="w-full p-2 rounded-lg bg-[#111] border border-[#222]"
-          />
-          <div className="flex space-x-2 mt-2 overflow-x-auto">
-            {existingPhotos.map((photo) => (
-              <img
-                key={photo.id}
-                src={supabase.storage.from('venue-photos').getPublicUrl(photo.photo_url).data.publicUrl}
-                alt="venue"
-                className="w-20 h-20 object-cover rounded-lg"
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Botón Guardar */}
-        <button
-          onClick={handleUpdate}
-          className="w-full py-3 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold"
-        >
-          Guardar cambios
-        </button>
-
+            <AdvancedMarker
+              position={{ lat: latitude, lng: longitude }}
+              draggable
+              onDragEnd={(e) => {
+                const lat = e.latLng.lat();
+                const lng = e.latLng.lng();
+                setLatitude(lat);
+                setLongitude(lng);
+                reverseGeocode(lat, lng);
+              }}
+            >
+              <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white" />
+            </AdvancedMarker>
+          </Map>
+        </APIProvider>
       </div>
+
+      <div>
+        <label className="block mb-2">Fotos existentes</label>
+        <div className="flex space-x-2 overflow-x-auto">
+          {existingPhotos.map((photo) => {
+            const url = supabase.storage.from('venue-photos').getPublicUrl(photo.photo_url).data.publicUrl;
+            return (
+              <div key={photo.id} className="relative w-24 h-24">
+                <img src={url} className="w-24 h-24 object-cover rounded-lg" />
+                <button
+                  onClick={() => handleDeletePhoto(photo.id)}
+                  className="absolute top-0 right-0 p-1 bg-black/70 rounded-full hover:bg-red-600"
+                >
+                  <Trash2 className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <label className="block mt-4 mb-2">Añadir fotos</label>
+        <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080]">
+          <Plus className="w-6 h-6 text-white" />
+          <input type="file" multiple className="hidden" onChange={(e) => setPhotos([...photos, ...e.target.files])} />
+        </label>
+      </div>
+
+      <button
+        onClick={handleUpdate}
+        className="w-full py-3 mt-4 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold"
+      >
+        Guardar cambios
+      </button>
     </div>
   );
 }
