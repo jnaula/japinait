@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 
 export default function EditVenue() {
   const { id } = useParams();
+  console.log("ID:",id);
   const navigate = useNavigate();
 
   const [venue, setVenue] = useState(null);
@@ -13,10 +14,13 @@ export default function EditVenue() {
   const [description, setDescription] = useState('');
 
   useEffect(() => {
+    if(id){
     fetchVenue();
-  }, []);
+    }
+  }, [id]);
 
   async function fetchVenue() {
+    console.log("fetching venue with id:",id)
     const { data, error } = await supabase
       .from('venues')
       .select('*')
