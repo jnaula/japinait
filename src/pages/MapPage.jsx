@@ -145,7 +145,7 @@ export default function MapPage() {
             <p className="text-gray-400 text-lg">Explora los mejores locales y eventos de la ciudad</p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-6 mb-8">
+          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 mb-8">
             <div
               className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4"
             >
