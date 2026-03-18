@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Filter, Search, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
-import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, Marker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -170,19 +170,19 @@ export default function MapPage() {
                   className="w-full h-full"
                 >
                   {/* User Location Marker */}
-                  <AdvancedMarker position={userLocation}>
+                  <Marker position={userLocation}>
                     <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
-                  </AdvancedMarker>
+                  </Marker>
 
                   {/* Venue Markers */}
                   {filteredVenues.map((venue) => (
-                    <AdvancedMarker
+                    <Marker
                       key={venue.id}
                       position={{ lat: venue.latitude, lng: venue.longitude }}
                       onClick={() => setSelectedVenue(venue)}
                     >
                       <Pin background={'#7928ca'} borderColor={'#fff'} glyphColor={'#fff'} scale={1} />
-                    </AdvancedMarker>
+                    </Marker>
                   ))}
 
                   {selectedVenue && (
