@@ -18,8 +18,8 @@ export default function EditVenue() {
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [venueType, setVenueType] = useState('');
-  const [latitude, setLatitude] = useState(-0.1807);
-  const [longitude, setLongitude] = useState(-78.4678);
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
 
   const [photos, setPhotos] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
@@ -27,7 +27,31 @@ export default function EditVenue() {
   useEffect(() => {
     fetchVenue();
     fetchVenueTypes();
+    getUserLocation();
   }, [id]);
+
+  // Obtener la ubicación del usuario
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLatitude(position.coords.latitude);
+          setLongitude(position.coords.longitude);
+          reverseGeocode(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.warn('No se pudo obtener ubicación, usando predeterminada', error);
+          setLatitude(-0.1807);
+          setLongitude(-78.4678);
+          reverseGeocode(-0.1807, -78.4678);
+        }
+      );
+    } else {
+      setLatitude(-0.1807);
+      setLongitude(-78.4678);
+      reverseGeocode(-0.1807, -78.4678);
+    }
+  };
 
   async function fetchVenue() {
     try {
@@ -43,8 +67,10 @@ export default function EditVenue() {
       setDescription(data.description);
       setAddress(data.address);
       setVenueType(data.venue_type_id);
-      setLatitude(data.latitude || -0.1807);
-      setLongitude(data.longitude || -78.4678);
+      if (data.latitude && data.longitude) {
+        setLatitude(data.latitude);
+        setLongitude(data.longitude);
+      }
 
       const { data: photosData } = await supabase
         .from('venue_photos')
@@ -64,25 +90,23 @@ export default function EditVenue() {
     if (data) setVenueTypes(data);
   }
 
+  // Reverse Geocoding: obtiene dirección a partir de lat/lng
   const reverseGeocode = async (lat, lng) => {
     try {
-      const response = await fetch(
+      const res = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
       );
-      const data = await response.json();
+      const data = await res.json();
       if (data.status === 'OK' && data.results.length > 0) {
         setAddress(data.results[0].formatted_address);
       }
     } catch (err) {
-      console.error('Geocoding error:', err);
+      console.error('Error de geocoding:', err);
     }
   };
 
   const handleUpdate = async () => {
-    if (!name || !address || !venueType) {
-      alert('Completa nombre, dirección y tipo de local');
-      return;
-    }
+    if (!name || !address || !venueType) return alert('Completa nombre, dirección y tipo de local');
 
     const { error } = await supabase
       .from('venues')
@@ -150,24 +174,14 @@ export default function EditVenue() {
         ))}
       </select>
 
-      <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
-        <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-          <Map
-            defaultZoom={15}
-            defaultCenter={{ lat: latitude, lng: longitude }}
-            options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
-            onClick={(e) => {
-              const lat = e.latLng.lat();
-              const lng = e.latLng.lng();
-              setLatitude(lat);
-              setLongitude(lng);
-              reverseGeocode(lat, lng);
-            }}
-          >
-            <AdvancedMarker
-              position={{ lat: latitude, lng: longitude }}
-              draggable
-              onDragEnd={(e) => {
+      {latitude && longitude && (
+        <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
+          <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+            <Map
+              defaultZoom={15}
+              defaultCenter={{ lat: latitude, lng: longitude }}
+              options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+              onClick={(e) => {
                 const lat = e.latLng.lat();
                 const lng = e.latLng.lng();
                 setLatitude(lat);
@@ -175,11 +189,23 @@ export default function EditVenue() {
                 reverseGeocode(lat, lng);
               }}
             >
-              <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white" />
-            </AdvancedMarker>
-          </Map>
-        </APIProvider>
-      </div>
+              <AdvancedMarker
+                position={{ lat: latitude, lng: longitude }}
+                draggable
+                onDragEnd={(e) => {
+                  const lat = e.latLng.lat();
+                  const lng = e.latLng.lng();
+                  setLatitude(lat);
+                  setLongitude(lng);
+                  reverseGeocode(lat, lng);
+                }}
+              >
+                <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white" />
+              </AdvancedMarker>
+            </Map>
+          </APIProvider>
+        </div>
+      )}
 
       <div>
         <label className="block mb-2">Fotos existentes</label>
