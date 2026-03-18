@@ -157,14 +157,16 @@ export default function MapPage() {
               </div>
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden">
                 <Map
+                  key={`${userLocation.lat}-${userLocation.lng}`}
                   defaultZoom={13}
-                  defaultCenter={userLocation}
                   center={userLocation}
+                  gestureHandling="greedy"
                   mapId="nerd-map"
                   options={{
                     styles: darkMapStyle,
                     streetViewControl: false,
                     mapTypeControl: false,
+                    fullscreenControl: false,
                   }}
                   className="w-full h-full"
                 >
