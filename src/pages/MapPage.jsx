@@ -159,6 +159,7 @@ export default function MapPage() {
                 <Map
                   defaultZoom={13}
                   defaultCenter={userLocation}
+                  gestureHandling='greedy'
                   mapId="nerd-map"
                   options={{
                     styles: darkMapStyle,
