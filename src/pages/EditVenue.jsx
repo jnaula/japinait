@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Trash2, Plus } from 'lucide-react';
 
-const GOOGLE_MAPS_API_KEY = 'TU_GOOGLE_MAPS_API_KEY_AQUI'; // Pon tu API Key de Google
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
 export default function EditVenue() {
   const { id } = useParams();
