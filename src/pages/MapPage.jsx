@@ -155,16 +155,9 @@ export default function MapPage() {
               </div>
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden">
                 <Map
-                  key={`${userLocation.lat}-${userLocation.lng}`}
-                  defaultZoom={13}
+                  Zoom={13}
                   center={userLocation}
                   gestureHandling="greedy"
-                  options={{
-                    styles: darkMapStyle,
-                    streetViewControl: false,
-                    mapTypeControl: false,
-                    fullscreenControl: false,
-                  }}
                   className="w-full h-full"
                 >
                   {/* User Location Marker */}
