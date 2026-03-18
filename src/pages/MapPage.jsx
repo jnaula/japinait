@@ -157,17 +157,18 @@ export default function MapPage() {
               </div>
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden">
                 <Map
-                  defaultZoom={13}
-                  defaultCenter={userLocation}
-                  center={userLocation}
-                  mapId="nerd-map"
-                  options={{
-                    styles: darkMapStyle,
-                    streetViewControl: false,
-                    mapTypeControl: false,
-                  }}
-                  className="w-full h-full"
-                >
+                                   defaultZoom={15}
+                                   defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
+                                   mapId="nerd-venue-detail-map"
+                                   options={{
+                                     styles: darkMapStyle,
+                                     streetViewControl: false,
+                                     mapTypeControl: false,
+                                     zoomControl: true,
+                                     fullscreenControl: false,
+                                   }}
+                                   className="w-full h-full"
+                                 >
                   {/* User Location Marker */}
                   <AdvancedMarker position={userLocation}>
                     <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
