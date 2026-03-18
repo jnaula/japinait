@@ -146,9 +146,7 @@ export default function MapPage() {
           </motion.div>
 
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+            <div
               className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4"
             >
               <div className="flex items-center space-x-3 mb-4">
