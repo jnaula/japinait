@@ -165,35 +165,12 @@ export default function MapPage() {
                   gestureHandling='greedy'
                   mapId="nerd-map"
                   options={{
-                    styles: darkMapStyle,
                     streetViewControl: false,
                     mapTypeControl: false,
                   }}
                   className="w-full h-full"
                 >
-                <button
-  onClick={() => {
-    if (!navigator.geolocation || !map) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newPos = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        map.panTo(newPos);
-        map.setZoom(15);
-      },
-      (error) => {
-        console.log("Error obteniendo ubicación", error);
-      }
-    );
-  }}
-  className="absolute bottom-4 right-4 bg-[#ff0080] text-white px-4 py-2 rounded-lg shadow-lg"
->
-  Mi ubicación
-</button>
+                
                   {/* User Location Marker */}
                   <AdvancedMarker position={userLocation}>
                     <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
@@ -240,6 +217,29 @@ export default function MapPage() {
                     </InfoWindow>
                   )}
                 </Map>
+                <button
+  onClick={() => {
+    if (!navigator.geolocation || !map) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newPos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        map.panTo(newPos);
+        map.setZoom(15);
+      },
+      (error) => {
+        console.log("Error obteniendo ubicación", error);
+      }
+    );
+  }}
+  className="absolute bottom-4 right-4 bg-[#ff0080] text-white px-4 py-2 rounded-lg shadow-lg"
+>
+  Mi ubicación
+</button>
               </div>
             </motion.div>
 
