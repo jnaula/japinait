@@ -163,7 +163,7 @@ export default function MapPage() {
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden relative">
                 <Map
                   Zoom={13}
-                  Center={userLocation}
+                  Center={userLocation || {lat:-0.1807, lng: -78.4678}}
                   onLoad={(mapInstance) => setMap(mapInstance)}
                   gestureHandling='greedy'
                   mapId="nerd-map"
