@@ -35,11 +35,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
 
-  useEffect(() => {
-    if (mapRef.current && center) {
-      mapRef.current.setCenter(center);
-    }
-  }, [center]);
+  
 
   const updateAddress = (lat, lng) => {
     if (!geocoder || !onAddressChange) return;
@@ -79,7 +75,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
   return (
     <Map
       defaultZoom={13}
-      center={center}
+      defaultcenter={center}
       mapId="nerd-picker-map"
       onLoad={(map) => (mapRef.current = map)}
       options={{
