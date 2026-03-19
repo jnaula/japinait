@@ -56,6 +56,29 @@ useEffect(() => {
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
 
+    // Obtener ubicación del usuario
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(loc);
+          // Centrar mapa si ya existe
+          if (mapRef.current) mapRef.current.panTo(loc);
+        },
+        (error) => {
+          console.log('MapPage: Geolocation error:', error);
+          setUserLocation({ lat: -0.1807, lng: -78.4678 }); // Quito por defecto
+        }
+      );
+    } else {
+      setUserLocation({ lat: -0.1807, lng: -78.4678 });
+    }
+  }; 
+
   const updateAddress = (lat, lng) => {
     if (!geocoder || !onAddressChange) return;
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
