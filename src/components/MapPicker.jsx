@@ -64,7 +64,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
   return (
       <Map
                           defaultZoom={13}
-                          defaultCenter={userLocation}
+                          defaultCenter={center}
                           gestureHandling="greedy"
                           mapId="nerd-map"
                           onLoad={(mapInstance) => (mapRef.current = mapInstance)}
