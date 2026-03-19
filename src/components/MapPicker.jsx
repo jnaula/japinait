@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Loader2 } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
@@ -34,6 +34,16 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
     if (!geocodingLib) return;
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
+
+  // Cuando el geocoder esté listo y tengamos un centro, geocodificar inmediatamente
+  useEffect(() => {
+    if (!geocoder) return;
+    geocoder.geocode({ location: center }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        onAddressChange(results[0].formatted_address);
+      }
+    });
+  }, [geocoder]);
 
   useEffect(() => {
     setMarkerPos(center);
@@ -70,7 +80,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
   return (
     <Map
-      zoom={13}
+      zoom={15}
       center={center}
       gestureHandling="greedy"
       mapId="nerd-map"
@@ -97,9 +107,49 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
 export default function MapPicker({ location, onLocationChange, onAddressChange }) {
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
-  const center = location
-    ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) }
-    : defaultCenter;
+  const [center, setCenter] = useState(
+    location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : null
+  );
+  const [loadingGeo, setLoadingGeo] = useState(!location);
+
+  // Detectar ubicación actual al montar si no hay location previa
+  useEffect(() => {
+    if (location) return;
+
+    if (!navigator.geolocation) {
+      setCenter(defaultCenter);
+      setLoadingGeo(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const detected = { lat: latitude, lng: longitude };
+        setCenter(detected);
+        onLocationChange(latitude, longitude);
+        setLoadingGeo(false);
+      },
+      () => {
+        // Si el usuario niega el permiso, usar Quito como fallback
+        setCenter(defaultCenter);
+        setLoadingGeo(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
+
+  // Sincronizar si location cambia desde el padre
+  useEffect(() => {
+    if (location) {
+      setCenter({ lat: parseFloat(location.lat), lng: parseFloat(location.lng) });
+    }
+  }, [location]);
+
+  const handleLocationChange = (lat, lng) => {
+    setCenter({ lat, lng });
+    onLocationChange(lat, lng);
+  };
 
   return (
     <div className="w-full space-y-2">
@@ -107,17 +157,24 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
         <MapPin className="w-4 h-4" />
         <span>Selecciona la ubicación en el mapa</span>
       </div>
-      <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden">
-        <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-          <MapContent
-            center={center}
-            onLocationChange={onLocationChange}
-            onAddressChange={onAddressChange}
-          />
-        </APIProvider>
+      <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden relative">
+        {loadingGeo ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a1a1a] z-10 space-y-2">
+            <Loader2 className="w-6 h-6 text-[#ff0080] animate-spin" />
+            <span className="text-xs text-gray-400">Detectando tu ubicación...</span>
+          </div>
+        ) : (
+          <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+            <MapContent
+              center={center}
+              onLocationChange={handleLocationChange}
+              onAddressChange={onAddressChange}
+            />
+          </APIProvider>
+        )}
       </div>
       <div className="text-xs text-gray-500">
-        Haz clic en el mapa o arrastra el marcador para ajustar la ubicación. La dirección se actualizará automáticamente.
+        Haz clic en el mapa o arrastra el marcador para ajustar la ubicación.
       </div>
     </div>
   );
