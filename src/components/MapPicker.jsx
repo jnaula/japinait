@@ -93,21 +93,7 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
   // Default to Quito, Ecuador if no location provided
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
   const center = location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter;
-  useEffect(() => {
-  if (!location && navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        onLocationChange(
-          position.coords.latitude,
-          position.coords.longitude
-        );
-      },
-      (error) => {
-        console.log("Error obteniendo ubicación:", error);
-      }
-    );
-  }
-}, []);
+
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center space-x-2 text-sm text-gray-400">
