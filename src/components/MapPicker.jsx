@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Loader2, LocateFixed } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
@@ -25,52 +25,46 @@ const darkMapStyle = [
   { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
 ];
 
-function MapContent({ center, onLocationChange, onAddressChange }) {
-  const geocodingLib = useMapsLibrary('geocoding');
-  const [geocoder, setGeocoder] = useState(null);
-  const [markerPos, setMarkerPos] = useState(center);
+// Geocoder independiente usando la API REST — no depende del ciclo de vida de React
+async function reverseGeocode(lat, lng) {
+  const url = https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY};
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status === 'OK' && data.results[0]) {
+    return data.results[0].formatted_address;
+  }
+  return null;
+}
 
-  useEffect(() => {
-    if (!geocodingLib) return;
-    setGeocoder(new geocodingLib.Geocoder());
-  }, [geocodingLib]);
+function MapContent({ center, onLocationChange, onAddressChange }) {
+  const [markerPos, setMarkerPos] = useState(center);
 
   useEffect(() => {
     setMarkerPos(center);
   }, [center.lat, center.lng]);
 
-  const updateAddress = (lat, lng) => {
-    if (!geocoder || !onAddressChange) return;
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        onAddressChange(results[0].formatted_address);
-      }
-    });
+  const handlePositionChange = async (lat, lng) => {
+    setMarkerPos({ lat, lng });
+    onLocationChange(lat, lng);
+    const address = await reverseGeocode(lat, lng);
+    if (address) onAddressChange(address);
   };
 
   const handleDragEnd = (e) => {
     if (e.latLng) {
-      const newLat = e.latLng.lat();
-      const newLng = e.latLng.lng();
-      setMarkerPos({ lat: newLat, lng: newLng });
-      onLocationChange(newLat, newLng);
-      updateAddress(newLat, newLng);
+      handlePositionChange(e.latLng.lat(), e.latLng.lng());
     }
   };
 
   const handleMapClick = (e) => {
-    if (e.detail.latLng) {
-      const newLat = e.detail.latLng.lat();
-      const newLng = e.detail.latLng.lng();
-      setMarkerPos({ lat: newLat, lng: newLng });
-      onLocationChange(newLat, newLng);
-      updateAddress(newLat, newLng);
+    if (e.detail?.latLng) {
+      handlePositionChange(e.detail.latLng.lat, e.detail.latLng.lng);
     }
   };
 
   return (
     <Map
-      defaultZoom={14}
+      defaultZoom={15}
       defaultCenter={center}
       gestureHandling="greedy"
       mapId="nerd-map"
@@ -117,30 +111,35 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
       return;
     }
 
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      setGeoError('La geolocalización requiere HTTPS.');
+    // Fix: usar window.location, no el prop location
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      setGeoError('La geolocalización requiere HTTPS. Contacta al administrador.');
       return;
     }
 
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const { latitude, longitude } = pos.coords;
-        const detected = { lat: latitude, lng: longitude };
-        setCenter(detected);
+        setCenter({ lat: latitude, lng: longitude });
         onLocationChange(latitude, longitude);
+
+        // Geocoding inmediato al detectar ubicación
+        const address = await reverseGeocode(latitude, longitude);
+        if (address) onAddressChange(address);
+
         setLocating(false);
       },
       (err) => {
         const messages = {
-          1: 'Permiso denegado. Actívalo en la configuración del navegador.',
+          1: 'Permiso denegado. Actívalo en configuración del navegador.',
           2: 'No se pudo obtener la ubicación.',
           3: 'Tiempo de espera agotado.',
         };
         setGeoError(messages[err.code] || 'Error desconocido.');
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
