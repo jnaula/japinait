@@ -56,38 +56,6 @@ useEffect(() => {
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
 
-    // Obtener ubicación del usuario
-  const getUserLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const loc = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(loc);
-          // Centrar mapa si ya existe
-          if (mapRef.current) mapRef.current.panTo(loc);
-        },
-        (error) => {
-          console.log('MapPage: Geolocation error:', error);
-          setUserLocation({ lat: -0.1807, lng: -78.4678 }); // Quito por defecto
-        }
-      );
-    } else {
-      setUserLocation({ lat: -0.1807, lng: -78.4678 });
-    }
-  }; 
-
-  const updateAddress = (lat, lng) => {
-    if (!geocoder || !onAddressChange) return;
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        onAddressChange(results[0].formatted_address);
-      }
-    });
-  };
-
   const handleDragEnd = (e) => {
     if (e.latLng) {
       const newLat = e.latLng.lat();
@@ -108,11 +76,11 @@ useEffect(() => {
 
   return (
       <Map
-                          defaultZoom={13}
-                          defaultCenter={center}
+                          Zoom={13}
+                          Center={center}
                           gestureHandling="greedy"
                           mapId="nerd-map"
-                          onLoad={(mapInstance) => (mapRef.current = mapInstance)}
+                          onLoad={(mapInstance) => setMap (mapInstance)}
                           options={{
                             styles: darkMapStyle,
                             streetViewControl: false,
