@@ -63,18 +63,18 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
   return (
     <Map
-                        defaultZoom={13}
-                        defaultCenter={userLocation}
-                        gestureHandling="greedy"
-                        mapId="nerd-map"
-                        onLoad={(mapInstance) => (mapRef.current = mapInstance)}
-                        options={{
-                          styles: darkMapStyle,
-                          streetViewControl: false,
-                          mapTypeControl: false,
-                        }}
-                        className="w-full h-full"
-                      >
+      defaultZoom={13}
+      defaultcenter={center}
+      mapId="nerd-picker-map"
+      options={{
+        styles: darkMapStyle,
+        streetViewControl: false,
+        mapTypeControl: false,
+        draggableCursor: 'pointer',
+      }}
+      onClick={handleMapClick}
+      className="w-full h-full"
+    >
       <AdvancedMarker
         position={center}
         draggable={true}
