@@ -37,8 +37,7 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState({ lat: -0.1807, lng: -78.4678 }); // Default to Quito
   const [selectedVenue, setSelectedVenue] = useState(null);
-  const [map, setMap] = useState(null);
-  const [locationReady, setLocationReady] = useState(false);
+  const mapRef = useRef(null);
 
   useEffect(() => {
     fetchVenueTypes();
@@ -54,13 +53,11 @@ export default function MapPage() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
-          setLocationReady(true);
         },
         (error) => {
           console.log('MapPage: Geolocation error:', error);
           // Default to Quito, Ecuador
           setUserLocation({ lat: -0.1807, lng: -78.4678 });
-          setLocationReady(true);
         }
       );
     }
@@ -162,18 +159,19 @@ export default function MapPage() {
               </div>
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden relative">
                 <Map
-                  Zoom={13}
-                  Center={userLocation || {lat:-0.1807, lng: -78.4678}}
-                  onLoad={(mapInstance) => setMap(mapInstance)}
+                  defaultZoom={13}
+                  defaultCenter={userLocation}
                   gestureHandling='greedy'
                   mapId="nerd-map"
+                  onLoad={(map) => (mapRef.current = map)}
                   options={{
+                    styles: darkMapStyle,
                     streetViewControl: false,
                     mapTypeControl: false,
                   }}
                   className="w-full h-full"
                 >
-                
+                  
                   {/* User Location Marker */}
                   <AdvancedMarker position={userLocation}>
                     <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
@@ -220,28 +218,6 @@ export default function MapPage() {
                     </InfoWindow>
                   )}
                 </Map>
-                <button
-  onClick={() => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newPos = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-
-        setUserLocation(newPos);
-      },
-      (error) => {
-        console.log("Error obteniendo ubicación", error);
-      }
-    );
-  }}
-  className="absolute bottom-4 right-4 bg-[#ff0080] text-white px-4 py-2 rounded-lg shadow-lg"
->
-  Mi ubicación
-</button>
               </div>
             </motion.div>
 
