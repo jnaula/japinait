@@ -64,7 +64,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
   return (
     <Map
       defaultZoom={13}
-      defaultcenter={center}
+      center={center}
       mapId="nerd-picker-map"
       options={{
         styles: darkMapStyle,
