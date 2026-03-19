@@ -116,10 +116,10 @@ useEffect(() => {
   return (
       <Map
                           defaultZoom={13}
-                          defaultCenter={center}
+                          Center={center}
                           gestureHandling="greedy"
                           mapId="nerd-map"
-                          onLoad={(map) => (mapRef.current = map)}
+                          onLoad={(mapInstance) => setMap (mapInstance)}
                           
                           options={{
                             styles: darkMapStyle,
