@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Filter, Search, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -34,45 +34,51 @@ export default function MapPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userLocation, setUserLocation] = useState(null); // Empezamos sin coords
+  const [userLocation, setUserLocation] = useState(null);
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const mapRef = useRef(null);
 
+  // Inicialización
   useEffect(() => {
     fetchVenueTypes();
     fetchVenues();
     getUserLocation();
   }, []);
 
+  // Obtener ubicación del usuario
   const getUserLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          const loc = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+          setUserLocation(loc);
+          // Centrar mapa si ya existe
+          if (mapRef.current) mapRef.current.panTo(loc);
         },
         (error) => {
           console.log('MapPage: Geolocation error:', error);
-          // Default a Quito si falla
-          setUserLocation({ lat: -0.1807, lng: -78.4678 });
+          setUserLocation({ lat: -0.1807, lng: -78.4678 }); // Quito por defecto
         }
       );
     } else {
-      // Si el navegador no soporta geolocalización
       setUserLocation({ lat: -0.1807, lng: -78.4678 });
     }
   };
 
+  // Horario de hoy
   const getTodayHours = (openingHours) => {
     if (!openingHours) return null;
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const today = days[new Date().getDay()];
     const hours = openingHours[today];
     if (!hours || !hours.open || !hours.close) return 'Cerrado hoy';
     return `${hours.open} - ${hours.close}`;
   };
 
+  // Fetch tipos de locales
   const fetchVenueTypes = async () => {
     try {
       const { data, error } = await supabase.from('venue_types').select('*').order('name');
@@ -83,29 +89,28 @@ export default function MapPage() {
     }
   };
 
+  // Fetch locales
   const fetchVenues = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('venues')
-        .select(`*, venue_types(name), venue_photos(photo_url, is_primary)`)
-        .eq('status', 'approved')
+        .select(`*, venue_types(name), venue_photos(photo_url,is_primary)`)
+        .eq('status','approved')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
 
-      const processedVenues = data.map((venue) => {
-        const primaryPhoto = venue.venue_photos?.find((p) => p.is_primary);
+      const processed = data.map(v => {
+        const primaryPhoto = v.venue_photos?.find(p => p.is_primary);
         return {
-          ...venue,
-          venue_type_name: venue.venue_types?.name,
-          primary_photo: primaryPhoto?.photo_url || venue.venue_photos?.[0]?.photo_url,
-          latitude: parseFloat(venue.latitude),
-          longitude: parseFloat(venue.longitude),
+          ...v,
+          venue_type_name: v.venue_types?.name,
+          primary_photo: primaryPhoto?.photo_url || v.venue_photos?.[0]?.photo_url,
+          latitude: parseFloat(v.latitude),
+          longitude: parseFloat(v.longitude),
         };
       });
-
-      setVenues(processedVenues);
+      setVenues(processed);
     } catch (err) {
       console.error('MapPage: Error fetching venues:', err);
     } finally {
@@ -113,23 +118,19 @@ export default function MapPage() {
     }
   };
 
-  const getFilteredVenues = () => {
-    return venues.filter((venue) => {
-      const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
-      const matchesSearch =
-        venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        venue.address.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesType && matchesSearch;
-    });
-  };
-
-  const filteredVenues = getFilteredVenues();
+  // Filtrado
+  const filteredVenues = venues.filter(v => {
+    const matchesType = selectedType === 'all' || v.venue_type_id === selectedType;
+    const matchesSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          v.address.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesType && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+          <motion.div initial={{ opacity: 0, y:-20 }} animate={{ opacity:1, y:0 }} className="text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Descubre <span className="bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-transparent bg-clip-text">la Vida Nocturna de Ecuador</span>
             </h1>
@@ -137,86 +138,81 @@ export default function MapPage() {
           </motion.div>
 
           <div className="grid lg:grid-cols-2 gap-6 mb-8">
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4">
+            {/* MAP */}
+            <motion.div initial={{opacity:0,x:-20}} animate={{opacity:1,x:0}} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4">
               <div className="flex items-center space-x-3 mb-4">
                 <MapPin className="w-5 h-5 text-[#ff0080]" />
                 <h2 className="text-lg font-semibold text-white">Vista de Mapa</h2>
               </div>
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden relative">
                 {userLocation && (
-                  <>
-                    <Map
-                      zoom={13}
-                      center={userLocation}
-                      gestureHandling="greedy"
-                      mapId="nerd-map"
-                      options={{
-                        styles: darkMapStyle,
-                        streetViewControl: false,
-                        mapTypeControl: false,
-                      }}
-                      className="w-full h-full"
-                    >
-                      {/* Usuario */}
-                      <AdvancedMarker position={userLocation}>
-                        <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
-                      </AdvancedMarker>
-
-                      {/* Venues */}
-                      {filteredVenues.map((venue) => (
-                        <AdvancedMarker
-                          key={venue.id}
-                          position={{ lat: venue.latitude, lng: venue.longitude }}
-                          onClick={() => setSelectedVenue(venue)}
-                        >
-                          <Pin background="#7928ca" borderColor="#fff" glyphColor="#fff" scale={1} />
-                        </AdvancedMarker>
-                      ))}
-
-                      {selectedVenue && (
-                        <InfoWindow position={{ lat: selectedVenue.latitude, lng: selectedVenue.longitude }} onCloseClick={() => setSelectedVenue(null)}>
-                          <div className="text-black p-2 min-w-[200px]">
-                            <h3 className="font-bold text-lg">{selectedVenue.name}</h3>
-                            <p className="text-sm text-gray-600 mb-2">{selectedVenue.address}</p>
-                            {selectedVenue.primary_photo && (
-                              <img src={selectedVenue.primary_photo} alt={selectedVenue.name} className="w-full h-24 object-cover rounded mb-2" />
-                            )}
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs bg-gray-200 px-2 py-1 rounded">{selectedVenue.venue_type_name}</span>
-                              {selectedVenue.opening_hours && (
-                                <div className="text-xs text-gray-500 flex items-center">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {getTodayHours(selectedVenue.opening_hours)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </InfoWindow>
-                      )}
-                    </Map>
-
-                    {/* Botón "Mi ubicación" */}
+                  <Map
+                    defaultZoom={13}
+                    defaultCenter={userLocation}
+                    gestureHandling="greedy"
+                    mapId="nerd-map"
+                    onLoad={(mapInstance) => (mapRef.current = mapInstance)}
+                    options={{
+                      styles: darkMapStyle,
+                      streetViewControl: false,
+                      mapTypeControl: false,
+                    }}
+                    className="w-full h-full"
+                  >
+                    {/* Botón Mi ubicación */}
                     <button
-                      onClick={() => {
-                        if (!navigator.geolocation) return;
-                        navigator.geolocation.getCurrentPosition((position) => {
-                          setUserLocation({
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                          });
-                        });
-                      }}
+                      onClick={getUserLocation}
                       className="absolute bottom-4 right-4 bg-[#ff0080] text-white px-4 py-2 rounded-lg shadow-lg z-10"
                     >
                       Mi ubicación
                     </button>
-                  </>
+
+                    {/* Usuario */}
+                    <AdvancedMarker position={userLocation}>
+                      <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
+                    </AdvancedMarker>
+
+                    {/* Venues */}
+                    {filteredVenues.map(v => (
+                      <AdvancedMarker
+                        key={v.id}
+                        position={{ lat: v.latitude, lng: v.longitude }}
+                        onClick={() => setSelectedVenue(v)}
+                      >
+                        <Pin background="#7928ca" borderColor="#fff" glyphColor="#fff" scale={1} />
+                      </AdvancedMarker>
+                    ))}
+
+                    {/* InfoWindow */}
+                    {selectedVenue && (
+                      <InfoWindow
+                        position={{ lat: selectedVenue.latitude, lng: selectedVenue.longitude }}
+                        onCloseClick={() => setSelectedVenue(null)}
+                      >
+                        <div className="text-black p-2 min-w-[200px]">
+                          <h3 className="font-bold text-lg">{selectedVenue.name}</h3>
+                          <p className="text-sm text-gray-600 mb-2">{selectedVenue.address}</p>
+                          {selectedVenue.primary_photo && (
+                            <img src={selectedVenue.primary_photo} alt={selectedVenue.name} className="w-full h-24 object-cover rounded mb-2" />
+                          )}
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs bg-gray-200 px-2 py-1 rounded">{selectedVenue.venue_type_name}</span>
+                            {selectedVenue.opening_hours && (
+                              <div className="text-xs text-gray-500 flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />{getTodayHours(selectedVenue.opening_hours)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </InfoWindow>
+                    )}
+                  </Map>
                 )}
               </div>
             </motion.div>
 
-            {/* Filtros y búsqueda */}
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+            {/* FILTROS */}
+            <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} className="space-y-4">
               <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4">
                 <div className="flex items-center space-x-3 mb-4">
                   <Search className="w-5 h-5 text-[#ff0080]" />
@@ -226,7 +222,7 @@ export default function MapPage() {
                   type="text"
                   placeholder="Buscar locales..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors"
                 />
               </div>
@@ -237,35 +233,30 @@ export default function MapPage() {
                   <h2 className="text-lg font-semibold text-white">Filtrar por Tipo</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <FilterButton active={selectedType === 'all'} onClick={() => setSelectedType('all')}>
-                    All
-                  </FilterButton>
-                  {venueTypes.map((type) => (
-                    <FilterButton key={type.id} active={selectedType === type.id} onClick={() => setSelectedType(type.id)}>
-                      {type.name}
-                    </FilterButton>
+                  <FilterButton active={selectedType==='all'} onClick={()=>setSelectedType('all')}>All</FilterButton>
+                  {venueTypes.map(t => (
+                    <FilterButton key={t.id} active={selectedType===t.id} onClick={()=>setSelectedType(t.id)}>{t.name}</FilterButton>
                   ))}
                 </div>
               </div>
             </motion.div>
           </div>
 
+          {/* Cards */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-12 h-12 border-4 border-[#ff0080] border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : filteredVenues.length > 0 ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredVenues.map((venue, index) => (
-                <motion.div key={venue.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                  <VenueCard venue={venue} />
+          ) : filteredVenues.length>0 ? (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.2}} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVenues.map((v,i)=>(
+                <motion.div key={v.id} initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:i*0.05}}>
+                  <VenueCard venue={v} />
                 </motion.div>
               ))}
             </motion.div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-lg">No venues found</p>
-            </div>
+            <div className="text-center py-12"><p className="text-gray-400 text-lg">No venues found</p></div>
           )}
         </div>
       </APIProvider>
@@ -280,9 +271,8 @@ function FilterButton({ active, onClick, children }) {
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-        active
-          ? 'bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white'
-          : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#2a2a2a]'
+        active ? 'bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white'
+               : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#2a2a2a]'
       }`}
     >
       {children}
