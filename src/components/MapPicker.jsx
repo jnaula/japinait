@@ -116,7 +116,7 @@ useEffect(() => {
   return (
       <Map
                           defaultZoom={13}
-                          Center={center}
+                          defaultcenter={center}
                           gestureHandling="greedy"
                           mapId="nerd-map"
                           onLoad={(mapInstance) => setMap (mapInstance)}
