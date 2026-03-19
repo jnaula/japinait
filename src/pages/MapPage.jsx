@@ -38,6 +38,7 @@ export default function MapPage() {
   const [userLocation, setUserLocation] = useState({ lat: -0.1807, lng: -78.4678 }); // Default to Quito
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [map, setMap] = useState(null);
+  const [locationReady, setLocationReady] = useState(false);
 
   useEffect(() => {
     fetchVenueTypes();
@@ -53,11 +54,13 @@ export default function MapPage() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
+          setLocationReady(true);
         },
         (error) => {
           console.log('MapPage: Geolocation error:', error);
           // Default to Quito, Ecuador
           setUserLocation({ lat: -0.1807, lng: -78.4678 });
+          setLocationReady(true);
         }
       );
     }
@@ -159,7 +162,7 @@ export default function MapPage() {
               </div>
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden relative">
                 <Map
-                  defaultZoom={13}
+                  Zoom={13}
                   Center={userLocation}
                   onLoad={(mapInstance) => setMap(mapInstance)}
                   gestureHandling='greedy'
