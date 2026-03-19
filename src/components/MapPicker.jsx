@@ -38,10 +38,9 @@ useEffect(() => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-     if(!center?.lat || center.lat === -0.1807){
       onLocationChange(lat, lng);
       updateAddress(lat, lng);
-     }
+
       map.panTo({ lat, lng });
       map.setZoom(15);
     },
@@ -57,6 +56,7 @@ useEffect(() => {
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
 
+    
   const handleDragEnd = (e) => {
     if (e.latLng) {
       const newLat = e.latLng.lat();
@@ -68,8 +68,8 @@ useEffect(() => {
 
   const handleMapClick = (e) => {
     if (e.detail.latLng) {
-      const newLat = e.detail.latLng.lat();
-      const newLng = e.detail.latLng.lng();
+      const newLat = e.detail.latLng.lat;
+      const newLng = e.detail.latLng.lng;
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
     }
@@ -77,11 +77,11 @@ useEffect(() => {
 
   return (
       <Map
-                          Zoom={13}
-                          Center={center}
+                          defaultZoom={13}
+                          defaultCenter={center}
                           gestureHandling="greedy"
                           mapId="nerd-map"
-                          onLoad={(mapInstance) => setMap (mapInstance)}
+                          onLoad={(mapInstance) => (mapRef.current = mapInstance)}
                           options={{
                             styles: darkMapStyle,
                             streetViewControl: false,
@@ -106,7 +106,7 @@ useEffect(() => {
 export default function MapPicker({ location, onLocationChange, onAddressChange }) {
   // Default to Quito, Ecuador if no location provided
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
-  const center = location ? { lat: parseFloat(location.lat) ||-0.1807, lng: parseFloat(location.lng) ||78.4678 } : defaultCenter;
+  const center = location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter;
 
   return (
     <div className="w-full space-y-2">
