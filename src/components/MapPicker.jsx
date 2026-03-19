@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
@@ -28,11 +28,16 @@ const darkMapStyle = [
 function MapContent({ center, onLocationChange, onAddressChange }) {
   const geocodingLib = useMapsLibrary('geocoding');
   const [geocoder, setGeocoder] = useState(null);
+  const [markerPos, setMarkerPos] = useState(center);
 
   useEffect(() => {
     if (!geocodingLib) return;
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
+
+  useEffect(() => {
+    setMarkerPos(center);
+  }, [center.lat, center.lng]);
 
   const updateAddress = (lat, lng) => {
     if (!geocoder || !onAddressChange) return;
@@ -47,6 +52,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
     if (e.latLng) {
       const newLat = e.latLng.lat();
       const newLng = e.latLng.lng();
+      setMarkerPos({ lat: newLat, lng: newLng });
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
     }
@@ -54,30 +60,30 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
   const handleMapClick = (e) => {
     if (e.detail.latLng) {
-      const newLat = e.detail.latLng.lat;
-      const newLng = e.detail.latLng.lng;
+      const newLat = e.detail.latLng.lat();
+      const newLng = e.detail.latLng.lng();
+      setMarkerPos({ lat: newLat, lng: newLng });
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
     }
   };
 
   return (
-      <Map
-                          defaultZoom={13}
-                          defaultCenter={center}
-                          gestureHandling="greedy"
-                          mapId="nerd-map"
-                          onLoad={(mapInstance) => (mapRef.current = mapInstance)}
-                          options={{
-                            styles: darkMapStyle,
-                            streetViewControl: false,
-                            mapTypeControl: false,
-                          }}
-                          onClick={handleMapClick}
-                          className="w-full h-full"
-                        >
+    <Map
+      zoom={13}
+      center={center}
+      gestureHandling="greedy"
+      mapId="nerd-map"
+      options={{
+        styles: darkMapStyle,
+        streetViewControl: false,
+        mapTypeControl: false,
+      }}
+      onClick={handleMapClick}
+      className="w-full h-full"
+    >
       <AdvancedMarker
-        position={center}
+        position={markerPos}
         draggable={true}
         onDragEnd={handleDragEnd}
       >
@@ -90,9 +96,10 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 }
 
 export default function MapPicker({ location, onLocationChange, onAddressChange }) {
-  // Default to Quito, Ecuador if no location provided
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
-  const center = location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter;
+  const center = location
+    ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) }
+    : defaultCenter;
 
   return (
     <div className="w-full space-y-2">
@@ -102,8 +109,8 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
       </div>
       <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden">
         <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-          <MapContent 
-            center={center} 
+          <MapContent
+            center={center}
             onLocationChange={onLocationChange}
             onAddressChange={onAddressChange}
           />
