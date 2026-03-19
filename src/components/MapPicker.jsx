@@ -28,35 +28,21 @@ const darkMapStyle = [
 function MapContent({ center, onLocationChange, onAddressChange }) {
   const geocodingLib = useMapsLibrary('geocoding');
   const [geocoder, setGeocoder] = useState(null);
-  const [map, setMap] = useState(null);
-
-useEffect(() => {
-  if (!map || !navigator.geolocation) return;
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-
-      onLocationChange(lat, lng);
-      updateAddress(lat, lng);
-
-      map.panTo({ lat, lng });
-      map.setZoom(15);
-    },
-    (error) => {
-      console.log('Error obteniendo ubicación:', error);
-    }
-  );
-}, [map]);
-
 
   useEffect(() => {
     if (!geocodingLib) return;
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
 
-    
+  const updateAddress = (lat, lng) => {
+    if (!geocoder || !onAddressChange) return;
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        onAddressChange(results[0].formatted_address);
+      }
+    });
+  };
+
   const handleDragEnd = (e) => {
     if (e.latLng) {
       const newLat = e.latLng.lat();
