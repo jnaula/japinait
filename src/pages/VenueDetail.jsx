@@ -271,6 +271,7 @@ const primaryImageUrl = primaryPhoto
           </motion.button>
         </div>
         <div className="absolute top-6 right-6 flex items-center space-x-2">
+          {user && venue.owner_id === user.id &&(
           <motion.button
            whileHover={{ scale: 1.1 }}
            whileTap={{ scale: 0.9 }}
@@ -279,6 +280,7 @@ const primaryImageUrl = primaryPhoto
           >
             <Edit className="w-6 h-6 text-white" />
            </motion.button>
+          )}
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
