@@ -37,7 +37,7 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState({ lat: -0.1807, lng: -78.4678 }); // Default to Quito
   const [selectedVenue, setSelectedVenue] = useState(null);
-  const mapRef = useRef(null);
+  const [map, setMap] = useState(null);
 
   useEffect(() => {
     fetchVenueTypes();
@@ -161,9 +161,9 @@ export default function MapPage() {
                 <Map
                   defaultZoom={13}
                   defaultCenter={userLocation}
+                  onLoad={(mapInstance) => setMap(mapInstance)}
                   gestureHandling='greedy'
                   mapId="nerd-map"
-                  onLoad={(map) => (mapRef.current = map)}
                   options={{
                     styles: darkMapStyle,
                     streetViewControl: false,
@@ -173,15 +173,27 @@ export default function MapPage() {
                 >
                 <button
   onClick={() => {
-    if (mapRef.current && userLocation) {
-      mapRef.current.panTo(userLocation);
-      mapRef.current.setZoom(15);
-    }
+    if (!navigator.geolocation || !map) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newPos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        map.panTo(newPos);
+        map.setZoom(15);
+      },
+      (error) => {
+        console.log("Error obteniendo ubicación", error);
+      }
+    );
   }}
   className="absolute bottom-4 right-4 bg-[#ff0080] text-white px-4 py-2 rounded-lg shadow-lg"
 >
   Mi ubicación
-</button>  
+</button>
                   {/* User Location Marker */}
                   <AdvancedMarker position={userLocation}>
                     <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg pulse" />
