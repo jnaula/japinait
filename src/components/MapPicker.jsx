@@ -54,8 +54,8 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
   const handleMapClick = (e) => {
     if (e.detail.latLng) {
-      const newLat = e.detail.latLng.lat();
-      const newLng = e.detail.latLng.lng();
+      const newLat = e.detail.latLng.lat;
+      const newLng = e.detail.latLng.lng;
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
     }
@@ -64,7 +64,7 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
   return (
     <Map
       defaultZoom={13}
-      defaultcenter={center}
+      center={center}
       mapId="nerd-picker-map"
       options={{
         styles: darkMapStyle,
