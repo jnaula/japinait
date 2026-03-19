@@ -27,7 +27,7 @@ const darkMapStyle = [
 
 // Geocoder independiente usando la API REST — no depende del ciclo de vida de React
 async function reverseGeocode(lat, lng) {
-  const url = https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY};
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.status === 'OK' && data.results[0]) {
