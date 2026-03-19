@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
@@ -28,14 +28,11 @@ const darkMapStyle = [
 function MapContent({ center, onLocationChange, onAddressChange }) {
   const geocodingLib = useMapsLibrary('geocoding');
   const [geocoder, setGeocoder] = useState(null);
-  const mapRef = useRef(null);
 
   useEffect(() => {
     if (!geocodingLib) return;
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
-
-  
 
   const updateAddress = (lat, lng) => {
     if (!geocoder || !onAddressChange) return;
@@ -52,38 +49,28 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
       const newLng = e.latLng.lng();
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
-
-      if (mapRef.current) {
-        mapRef.current.panTo({ lat: newLat, lng: newLng });
-      }
     }
   };
 
   const handleMapClick = (e) => {
-    if (e.latLng) {
-      const newLat = e.latLng.lat();
-      const newLng = e.latLng.lng();
+    if (e.detail.latLng) {
+      const newLat = e.detail.latLng.lat;
+      const newLng = e.detail.latLng.lng;
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
-
-      if (mapRef.current) {
-        mapRef.current.panTo({ lat: newLat, lng: newLng });
-      }
     }
   };
 
   return (
     <Map
       defaultZoom={13}
-      defaultcenter={center}
+      center={center}
       mapId="nerd-picker-map"
-      onLoad={(map) => (mapRef.current = map)}
       options={{
         styles: darkMapStyle,
         streetViewControl: false,
         mapTypeControl: false,
         draggableCursor: 'pointer',
-        gestureHandling: 'greedy',
       }}
       onClick={handleMapClick}
       className="w-full h-full"
@@ -102,10 +89,9 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 }
 
 export default function MapPicker({ location, onLocationChange, onAddressChange }) {
+  // Default to Quito, Ecuador if no location provided
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
-  const center = location
-    ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) }
-    : defaultCenter;
+  const center = location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter;
 
   return (
     <div className="w-full space-y-2">
