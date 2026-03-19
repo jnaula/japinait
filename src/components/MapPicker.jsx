@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, LocateFixed } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, useMapsLibrary } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
@@ -34,16 +34,6 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
     if (!geocodingLib) return;
     setGeocoder(new geocodingLib.Geocoder());
   }, [geocodingLib]);
-
-  // Cuando el geocoder esté listo y tengamos un centro, geocodificar inmediatamente
-  useEffect(() => {
-    if (!geocoder) return;
-    geocoder.geocode({ location: center }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        onAddressChange(results[0].formatted_address);
-      }
-    });
-  }, [geocoder]);
 
   useEffect(() => {
     setMarkerPos(center);
@@ -80,8 +70,8 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
   return (
     <Map
-      zoom={15}
-      center={center}
+      defaultZoom={14}
+      defaultCenter={center}
       gestureHandling="greedy"
       mapId="nerd-map"
       options={{
@@ -108,43 +98,51 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 export default function MapPicker({ location, onLocationChange, onAddressChange }) {
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
   const [center, setCenter] = useState(
-    location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : null
+    location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter
   );
-  const [loadingGeo, setLoadingGeo] = useState(!location);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState(null);
 
-  // Detectar ubicación actual al montar si no hay location previa
   useEffect(() => {
-    if (location) return;
+    if (location) {
+      setCenter({ lat: parseFloat(location.lat), lng: parseFloat(location.lng) });
+    }
+  }, [location]);
+
+  const handleLocateMe = () => {
+    setGeoError(null);
 
     if (!navigator.geolocation) {
-      setCenter(defaultCenter);
-      setLoadingGeo(false);
+      setGeoError('Tu navegador no soporta geolocalización.');
       return;
     }
 
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      setGeoError('La geolocalización requiere HTTPS.');
+      return;
+    }
+
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         const detected = { lat: latitude, lng: longitude };
         setCenter(detected);
         onLocationChange(latitude, longitude);
-        setLoadingGeo(false);
+        setLocating(false);
       },
-      () => {
-        // Si el usuario niega el permiso, usar Quito como fallback
-        setCenter(defaultCenter);
-        setLoadingGeo(false);
+      (err) => {
+        const messages = {
+          1: 'Permiso denegado. Actívalo en la configuración del navegador.',
+          2: 'No se pudo obtener la ubicación.',
+          3: 'Tiempo de espera agotado.',
+        };
+        setGeoError(messages[err.code] || 'Error desconocido.');
+        setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  }, []);
-
-  // Sincronizar si location cambia desde el padre
-  useEffect(() => {
-    if (location) {
-      setCenter({ lat: parseFloat(location.lat), lng: parseFloat(location.lng) });
-    }
-  }, [location]);
+  };
 
   const handleLocationChange = (lat, lng) => {
     setCenter({ lat, lng });
@@ -153,25 +151,38 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
 
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center space-x-2 text-sm text-gray-400">
-        <MapPin className="w-4 h-4" />
-        <span>Selecciona la ubicación en el mapa</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2 text-sm text-gray-400">
+          <MapPin className="w-4 h-4" />
+          <span>Selecciona la ubicación en el mapa</span>
+        </div>
+        <button
+          onClick={handleLocateMe}
+          disabled={locating}
+          className="flex items-center space-x-1 text-xs text-[#ff0080] hover:text-[#ff40a0] disabled:opacity-50 transition-colors"
+        >
+          {locating
+            ? <Loader2 className="w-3 h-3 animate-spin" />
+            : <LocateFixed className="w-3 h-3" />
+          }
+          <span>{locating ? 'Localizando...' : 'Mi ubicación'}</span>
+        </button>
       </div>
-      <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden relative">
-        {loadingGeo ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a1a1a] z-10 space-y-2">
-            <Loader2 className="w-6 h-6 text-[#ff0080] animate-spin" />
-            <span className="text-xs text-gray-400">Detectando tu ubicación...</span>
-          </div>
-        ) : (
-          <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-            <MapContent
-              center={center}
-              onLocationChange={handleLocationChange}
-              onAddressChange={onAddressChange}
-            />
-          </APIProvider>
-        )}
+
+      {geoError && (
+        <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded px-3 py-2">
+          {geoError}
+        </div>
+      )}
+
+      <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden">
+        <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+          <MapContent
+            center={center}
+            onLocationChange={handleLocationChange}
+            onAddressChange={onAddressChange}
+          />
+        </APIProvider>
       </div>
       <div className="text-xs text-gray-500">
         Haz clic en el mapa o arrastra el marcador para ajustar la ubicación.
