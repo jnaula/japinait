@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Loader2, LocateFixed } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -49,8 +49,16 @@ async function geolocateByNetwork() {
   return null;
 }
 
-function MapContent({ center, onLocationChange, onAddressChange }) {
+function MapContent({ center, flyTo, onLocationChange, onAddressChange }) {
+  const map = useMap();
   const [markerPos, setMarkerPos] = useState(center);
+
+  // Cuando flyTo cambia, animar el mapa hacia esa posición
+  useEffect(() => {
+    if (!map || !flyTo) return;
+    map.panTo(flyTo);
+    map.setZoom(16);
+  }, [flyTo]);
 
   useEffect(() => {
     setMarkerPos(center);
@@ -107,6 +115,7 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
   const [center, setCenter] = useState(
     location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter
   );
+  const [flyTo, setFlyTo] = useState(null);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState(null);
 
@@ -138,6 +147,7 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
 
       if (coords) {
         setCenter(coords);
+        setFlyTo({ ...coords, _t: Date.now() }); // _t fuerza re-render si coords son iguales
         onLocationChange(coords.lat, coords.lng);
         const address = await reverseGeocode(coords.lat, coords.lng);
         if (address) onAddressChange(address);
@@ -151,7 +161,6 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
     }
   };
 
-  // Detectar ubicación al montar el componente
   useEffect(() => {
     handleLocateMe();
   }, []);
@@ -197,6 +206,7 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
         <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
           <MapContent
             center={center}
+            flyTo={flyTo}
             onLocationChange={handleLocationChange}
             onAddressChange={onAddressChange}
           />
