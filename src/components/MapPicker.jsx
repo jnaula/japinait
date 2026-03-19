@@ -54,8 +54,8 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
 
   const handleMapClick = (e) => {
     if (e.detail.latLng) {
-      const newLat = e.detail.latLng.lat;
-      const newLng = e.detail.latLng.lng;
+      const newLat = e.detail.latLng.lat();
+      const newLng = e.detail.latLng.lng();
       onLocationChange(newLat, newLng);
       updateAddress(newLat, newLng);
     }
@@ -64,7 +64,8 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
   return (
     <Map
       defaultZoom={13}
-      center={center}
+      defaultcenter={center}
+      gestureHandling='greedy'
       mapId="nerd-picker-map"
       options={{
         styles: darkMapStyle,
@@ -92,7 +93,21 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
   // Default to Quito, Ecuador if no location provided
   const defaultCenter = { lat: -0.1807, lng: -78.4678 };
   const center = location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter;
-
+  useEffect(() => {
+  if (!location && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        onLocationChange(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+      },
+      (error) => {
+        console.log("Error obteniendo ubicación:", error);
+      }
+    );
+  }
+}, []);
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center space-x-2 text-sm text-gray-400">
