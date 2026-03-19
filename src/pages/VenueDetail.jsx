@@ -45,10 +45,10 @@ const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'sat
 
 export default function VenueDetail() {
   const { id } = useParams();
+  const [userRole, setUserRole] = useState(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [venue, setVenue] = useState(null);
-  const isOwner = venue && user && venue.owner_id == user.id;
   const [photos, setPhotos] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -65,22 +65,21 @@ export default function VenueDetail() {
 
   useEffect(() => {
     if (user) {
+      fetchUserRole();
       checkFavorite();
     }
   }, [user, id]);
 
-  /*const incrementViewCount = async () => {
-    try {
-      await supabase.rpc('increment', {
-        table_name: 'venues',
-        row_id: id,
-        column_name: 'view_count',
-      });
-    } catch (err) {
-      console.log('VenueDetail: Could not increment view count');
-    }
+  const fetchUserRole = async () => {
+   const{data,error } = await supabase.from('profiles')
+   .select('role')
+   .eq('id', user.id)
+   .single();
+   if(!error && data) {
+    setUserRole(data.role);
+   }
   };
-  */
+  
 
   const fetchVenueDetails = async () => {
     setLoading(true);
@@ -271,7 +270,7 @@ const primaryImageUrl = primaryPhoto
           </motion.button>
         </div>
         <div className="absolute top-6 right-6 flex items-center space-x-2">
-          {user && venue.owner_id === user.id &&(
+          {userRole === 'venue_admin' &&(
           <motion.button
            whileHover={{ scale: 1.1 }}
            whileTap={{ scale: 0.9 }}
