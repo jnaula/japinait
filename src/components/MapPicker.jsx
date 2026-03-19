@@ -28,6 +28,58 @@ const darkMapStyle = [
 function MapContent({ center, onLocationChange, onAddressChange }) {
   const geocodingLib = useMapsLibrary('geocoding');
   const [geocoder, setGeocoder] = useState(null);
+  const [map, setMap] = useState(null);
+
+// Obtener ubicación real del usuario al cargar
+useEffect(() => {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      onLocationChange(lat, lng);
+      updateAddress(lat, lng);
+
+      if (map) {
+        map.panTo({ lat, lng });
+        map.setZoom(15);
+      }
+    },
+    (error) => {
+      console.log("Error obteniendo ubicación", error);
+    }
+  );
+}, [map]);
+
+// Cuando cambia el center → mover el mapa
+useEffect(() => {
+  if (map && center) {
+    map.panTo(center);
+  }
+}, [center, map]);
+
+useEffect(() => {
+  if (!map || !navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      onLocationChange(lat, lng);
+      updateAddress(lat, lng);
+
+      map.panTo({ lat, lng });
+      map.setZoom(15);
+    },
+    (error) => {
+      console.log('Error obteniendo ubicación:', error);
+    }
+  );
+}, [map]);
+
 
   useEffect(() => {
     if (!geocodingLib) return;
@@ -67,7 +119,8 @@ function MapContent({ center, onLocationChange, onAddressChange }) {
                           defaultCenter={center}
                           gestureHandling="greedy"
                           mapId="nerd-map"
-                          onLoad={(mapInstance) => (mapRef.current = mapInstance)}
+                          onLoad={(map) => (mapRef.current = map)}
+                          
                           options={{
                             styles: darkMapStyle,
                             streetViewControl: false,
