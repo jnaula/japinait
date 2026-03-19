@@ -160,7 +160,7 @@ export default function MapPage() {
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden relative">
                 <Map
                   defaultZoom={13}
-                  defaultCenter={userLocation}
+                  Center={userLocation}
                   onLoad={(mapInstance) => setMap(mapInstance)}
                   gestureHandling='greedy'
                   mapId="nerd-map"
@@ -219,7 +219,7 @@ export default function MapPage() {
                 </Map>
                 <button
   onClick={() => {
-    if (!navigator.geolocation || !map) return;
+    if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -228,8 +228,7 @@ export default function MapPage() {
           lng: position.coords.longitude,
         };
 
-        map.panTo(newPos);
-        map.setZoom(15);
+        setUserLocation(newPos);
       },
       (error) => {
         console.log("Error obteniendo ubicación", error);
