@@ -36,7 +36,6 @@ const DAYS_TRANSLATION = {
 
 const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-// Parsea opening_hours sea string o objeto
 function parseOpeningHours(raw) {
   if (!raw) return null;
   if (typeof raw === 'string') {
@@ -60,11 +59,9 @@ export default function VenueDetail() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Hero slider
   const [heroIndex, setHeroIndex] = useState(0);
   const touchStartX = useRef(null);
 
-  // Lightbox
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const lightboxTouchStartX = useRef(null);
 
@@ -82,7 +79,6 @@ export default function VenueDetail() {
     setPhotoUrls(urls);
   }, [photos]);
 
-  // Teclado para lightbox
   useEffect(() => {
     const handleKey = (e) => {
       if (lightboxIndex === null) return;
@@ -166,7 +162,6 @@ export default function VenueDetail() {
     } finally { setSubmitting(false); }
   };
 
-  // Swipe handlers para hero
   const handleHeroTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
   const handleHeroTouchEnd = (e) => {
     if (touchStartX.current === null) return;
@@ -178,7 +173,6 @@ export default function VenueDetail() {
     touchStartX.current = null;
   };
 
-  // Swipe handlers para lightbox
   const handleLightboxTouchStart = (e) => { lightboxTouchStartX.current = e.touches[0].clientX; };
   const handleLightboxTouchEnd = (e) => {
     if (lightboxTouchStartX.current === null) return;
@@ -208,7 +202,7 @@ export default function VenueDetail() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
 
-      {/* ── HERO con galería deslizable por swipe y clic ── */}
+      {/* HERO */}
       <div
         className="relative h-96 bg-[#1a1a1a] overflow-hidden select-none"
         onTouchStart={handleHeroTouchStart}
@@ -244,8 +238,6 @@ export default function VenueDetail() {
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
-
-                {/* Puntos indicadores */}
                 <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
                   {photoUrls.map((_, i) => (
                     <button
@@ -255,17 +247,14 @@ export default function VenueDetail() {
                     />
                   ))}
                 </div>
-
-                {/* Contador y hint */}
                 <div className="absolute bottom-16 right-6 z-10 text-xs text-white/70 bg-black/40 px-2 py-1 rounded-full">
                   {heroIndex + 1} / {photoUrls.length}
                 </div>
               </>
             )}
 
-            {/* Hint de clic */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 text-xs text-white/50 flex items-center space-x-1">
-              <span>Toca la foto para ampliar</span>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 text-xs text-white/50">
+              Toca la foto para ampliar
             </div>
           </>
         ) : (
@@ -307,7 +296,7 @@ export default function VenueDetail() {
         </div>
       </div>
 
-      {/* ── CONTENIDO ── */}
+      {/* CONTENIDO */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
@@ -329,8 +318,16 @@ export default function VenueDetail() {
             )}
           </div>
 
+          {/* ── Descripción con saltos de línea ── */}
           {venue.description && (
-            <p className="text-gray-300 text-lg mb-6">{venue.description}</p>
+            <div className="text-gray-300 text-lg mb-6 space-y-3">
+              {venue.description
+                .split('\n')
+                .filter(line => line.trim() !== '')
+                .map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+            </div>
           )}
 
           <div className="grid md:grid-cols-2 gap-4 mb-8">
@@ -341,8 +338,6 @@ export default function VenueDetail() {
             {venue.music_type && (
               <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />
             )}
-
-            {/* ── Horarios — parseados y verificados ── */}
             {hasHours && (
               <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
                 <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
@@ -453,7 +448,7 @@ export default function VenueDetail() {
         </motion.div>
       </div>
 
-      {/* ── LIGHTBOX ── */}
+      {/* LIGHTBOX */}
       <AnimatePresence>
         {lightboxIndex !== null && (
           <motion.div
