@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Filter, Search, Clock, Loader2, LocateFixed } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
-import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -30,8 +30,8 @@ const darkMapStyle = [
 ];
 
 async function geolocateByNetwork() {
-  const res = await fetch(
-    `https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_MAPS_API_KEY}`,
+  const res = await fetch(`
+    https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_MAPS_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,10 +45,19 @@ async function geolocateByNetwork() {
 
 const DEFAULT_CENTER = { lat: -0.1807, lng: -78.4678 };
 
-const DAYS_TRANSLATION = {
-  monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles',
-  thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo',
-};
+// Componente interno que accede al mapa para hacer panTo
+function MapController({ panToRef }) {
+  const map = useMap();
+  useEffect(() => {
+    panToRef.current = (coords) => {
+      if (map) {
+        map.panTo(coords);
+        map.setZoom(15);
+      }
+    };
+  }, [map]);
+  return null;
+}
 
 export default function MapPage() {
   const navigate = useNavigate();
@@ -57,11 +66,11 @@ export default function MapPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userLocation, setUserLocation] = useState(DEFAULT_CENTER);
-  const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
+  const [userLocation, setUserLocation] = useState(null);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState(null);
+  const panToRef = useRef(null); // ref para llamar panTo sin re-renderizar el mapa
 
   useEffect(() => {
     fetchVenueTypes();
@@ -73,7 +82,6 @@ export default function MapPage() {
     setLocating(true);
     setGeoError(null);
 
-    // Intento 1: GPS nativo
     const tryNativeGeo = () =>
       new Promise((resolve) => {
         if (!navigator.geolocation) return resolve(null);
@@ -90,7 +98,8 @@ export default function MapPage() {
 
       if (coords) {
         setUserLocation(coords);
-        setMapCenter(coords);
+        // Centrar el mapa via ref sin tocar zoom/center controlados
+        if (panToRef.current) panToRef.current(coords);
       } else {
         setGeoError('No se pudo detectar la ubicación.');
       }
@@ -192,7 +201,6 @@ export default function MapPage() {
                   <MapPin className="w-5 h-5 text-[#ff0080]" />
                   <h2 className="text-lg font-semibold text-white">Vista de Mapa</h2>
                 </div>
-                {/* Botón Mi ubicación */}
                 <button
                   onClick={detectLocation}
                   disabled={locating}
@@ -214,8 +222,8 @@ export default function MapPage() {
 
               <div className="w-full h-96 rounded-lg bg-[#1a1a1a] overflow-hidden">
                 <Map
-                  zoom={13}
-                  center={mapCenter}
+                  defaultZoom={13}
+                  defaultCenter={DEFAULT_CENTER}
                   gestureHandling="greedy"
                   mapId="nerd-map"
                   options={{
@@ -225,10 +233,15 @@ export default function MapPage() {
                   }}
                   className="w-full h-full"
                 >
+                  {/* Controlador para panTo sin re-render */}
+                  <MapController panToRef={panToRef} />
+
                   {/* Marcador usuario */}
-                  <AdvancedMarker position={userLocation}>
-                    <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg" />
-                  </AdvancedMarker>
+                  {userLocation && (
+                    <AdvancedMarker position={userLocation}>
+                      <div className="w-4 h-4 bg-[#ff0080] rounded-full border-2 border-white shadow-lg" />
+                    </AdvancedMarker>
+                  )}
 
                   {/* Pines de locales */}
                   {filteredVenues.map((v) => (
@@ -241,13 +254,12 @@ export default function MapPage() {
                     </AdvancedMarker>
                   ))}
 
-                  {/* InfoWindow al clickear pin */}
+                  {/* InfoWindow */}
                   {selectedVenue && (
                     <InfoWindow
                       position={{ lat: selectedVenue.latitude, lng: selectedVenue.longitude }}
                       onCloseClick={() => setSelectedVenue(null)}
                     >
-                      {/* Clickear la tarjeta navega al detalle */}
                       <div
                         className="cursor-pointer min-w-[200px]"
                         onClick={() => navigate(`/venue/${selectedVenue.id}`)}
