@@ -256,42 +256,58 @@ export default function MapPage() {
 
                   {/* InfoWindow */}
                   {selectedVenue && (
-                    <InfoWindow
-                      position={{ lat: selectedVenue.latitude, lng: selectedVenue.longitude }}
-                      onCloseClick={() => setSelectedVenue(null)}
-                    >
-                      <div
-                        className="cursor-pointer min-w-[200px]"
-                        onClick={() => navigate(`/venue/${selectedVenue.id}`)}
-                      >
-                        {selectedVenue.primary_photo && (
-                          <img
-                            src={selectedVenue.primary_photo}
-                            alt={selectedVenue.name}
-                            className="w-full h-28 object-cover rounded-lg mb-2"
-                          />
-                        )}
-                        <h3 className="font-bold text-base text-gray-900 mb-1">
-                          {selectedVenue.name}
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-2">{selectedVenue.address}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                            {selectedVenue.venue_type_name}
-                          </span>
-                          {selectedVenue.opening_hours && (
-                            <div className="text-xs text-gray-400 flex items-center space-x-1">
-                              <Clock className="w-3 h-3" />
-                              <span>{getTodayHours(selectedVenue.opening_hours)}</span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#7928ca] font-medium mt-2 text-right">
-                          Ver detalle →
-                        </p>
-                      </div>
-                    </InfoWindow>
-                  )}
+  <InfoWindow
+    position={{ lat: selectedVenue.latitude, lng: selectedVenue.longitude }}
+    onCloseClick={() => setSelectedVenue(null)}
+  >
+    <div
+      className="cursor-pointer"
+      style={{ width: '220px' }}
+      onClick={() => navigate(`/venue/${selectedVenue.id}`)}
+    >
+      {selectedVenue.primary_photo && (
+        <img
+          src={selectedVenue.primary_photo}
+          alt={selectedVenue.name}
+          style={{
+            width: '100%',
+            height: '120px',
+            objectFit: 'cover',
+            borderRadius: '8px',
+            marginBottom: '8px',
+            display: 'block',
+          }}
+        />
+      )}
+      <h3 style={{ fontWeight: 700, fontSize: '14px', color: '#111', marginBottom: '4px' }}>
+        {selectedVenue.name}
+      </h3>
+      <p style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>
+        {selectedVenue.address}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{
+          fontSize: '11px',
+          background: '#ede9fe',
+          color: '#7928ca',
+          padding: '2px 8px',
+          borderRadius: '999px',
+        }}>
+          {selectedVenue.venue_type_name}
+        </span>
+        {selectedVenue.opening_hours && (
+          <span style={{ fontSize: '11px', color: '#aaa', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <Clock style={{ width: '11px', height: '11px' }} />
+            {getTodayHours(selectedVenue.opening_hours)}
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: '11px', color: '#7928ca', fontWeight: 600, textAlign: 'right', marginTop: '6px' }}>
+        Ver detalle →
+      </p>
+    </div>
+  </InfoWindow>
+)}
                 </Map>
               </div>
             </motion.div>
