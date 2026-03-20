@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -36,6 +36,15 @@ const DAYS_TRANSLATION = {
 
 const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+// Parsea opening_hours sea string o objeto
+function parseOpeningHours(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+  return raw;
+}
+
 export default function VenueDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -51,11 +60,13 @@ export default function VenueDetail() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Galería hero
+  // Hero slider
   const [heroIndex, setHeroIndex] = useState(0);
+  const touchStartX = useRef(null);
 
   // Lightbox
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const lightboxTouchStartX = useRef(null);
 
   useEffect(() => { fetchVenueDetails(); }, [id]);
 
@@ -63,7 +74,6 @@ export default function VenueDetail() {
     if (user) { fetchUserRole(); checkFavorite(); }
   }, [user, id]);
 
-  // Generar URLs públicas cuando llegan las fotos
   useEffect(() => {
     if (photos.length === 0) return;
     const urls = photos.map((p) =>
@@ -72,7 +82,7 @@ export default function VenueDetail() {
     setPhotoUrls(urls);
   }, [photos]);
 
-  // Cerrar lightbox con ESC
+  // Teclado para lightbox
   useEffect(() => {
     const handleKey = (e) => {
       if (lightboxIndex === null) return;
@@ -95,26 +105,20 @@ export default function VenueDetail() {
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
         .select(`*, venue_types(name), profiles(full_name)`)
-        .eq('id', id)
-        .single();
+        .eq('id', id).single();
       if (venueError) throw venueError;
       setVenue(venueData);
 
       const { data: photosData, error: photosError } = await supabase
-        .from('venue_photos')
-        .select('*')
-        .eq('venue_id', id)
-        .order('order_index');
+        .from('venue_photos').select('*').eq('venue_id', id).order('order_index');
       if (!photosError) setPhotos(photosData || []);
 
       const { data: reviewsData, error: reviewsError } = await supabase
-        .from('reviews')
-        .select(`*, profiles(full_name)`)
-        .eq('venue_id', id)
-        .order('created_at', { ascending: false });
+        .from('reviews').select(`*, profiles(full_name)`)
+        .eq('venue_id', id).order('created_at', { ascending: false });
       if (!reviewsError) setReviews(reviewsData || []);
     } catch (err) {
-      console.error('VenueDetail: Error fetching venue details:', err);
+      console.error('VenueDetail: Error:', err);
     } finally {
       setLoading(false);
     }
@@ -122,8 +126,7 @@ export default function VenueDetail() {
 
   const checkFavorite = async () => {
     try {
-      const { data, error } = await supabase
-        .from('favorites').select('id')
+      const { data, error } = await supabase.from('favorites').select('id')
         .eq('user_id', user.id).eq('venue_id', id).single();
       if (data && !error) setIsFavorite(true);
     } catch { }
@@ -145,9 +148,7 @@ export default function VenueDetail() {
       }
     } catch (err) {
       console.error('VenueDetail: Error toggling favorite:', err);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleSubmitReview = async (e) => {
@@ -162,9 +163,31 @@ export default function VenueDetail() {
     } catch (err) {
       console.error('VenueDetail: Error submitting review:', err);
       alert('Error al enviar la reseña');
-    } finally {
-      setSubmitting(false);
+    } finally { setSubmitting(false); }
+  };
+
+  // Swipe handlers para hero
+  const handleHeroTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleHeroTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) setHeroIndex((i) => (i + 1) % photoUrls.length);
+      else setHeroIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length);
     }
+    touchStartX.current = null;
+  };
+
+  // Swipe handlers para lightbox
+  const handleLightboxTouchStart = (e) => { lightboxTouchStartX.current = e.touches[0].clientX; };
+  const handleLightboxTouchEnd = (e) => {
+    if (lightboxTouchStartX.current === null) return;
+    const diff = lightboxTouchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) setLightboxIndex((i) => (i + 1) % photoUrls.length);
+      else setLightboxIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length);
+    }
+    lightboxTouchStartX.current = null;
   };
 
   if (loading) return (
@@ -179,14 +202,18 @@ export default function VenueDetail() {
     </div>
   );
 
-  const heroPrev = () => setHeroIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length);
-  const heroNext = () => setHeroIndex((i) => (i + 1) % photoUrls.length);
+  const openingHours = parseOpeningHours(venue.opening_hours);
+  const hasHours = openingHours && Object.values(openingHours).some(h => h?.open && h?.close);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
 
-      {/* ── HERO con galería deslizable ── */}
-      <div className="relative h-96 bg-[#1a1a1a] overflow-hidden">
+      {/* ── HERO con galería deslizable por swipe y clic ── */}
+      <div
+        className="relative h-96 bg-[#1a1a1a] overflow-hidden select-none"
+        onTouchStart={handleHeroTouchStart}
+        onTouchEnd={handleHeroTouchEnd}
+      >
         {photoUrls.length > 0 ? (
           <>
             <AnimatePresence mode="wait">
@@ -197,46 +224,49 @@ export default function VenueDetail() {
                 initial={{ opacity: 0, x: 40 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full object-cover absolute inset-0"
+                transition={{ duration: 0.25 }}
+                onClick={() => setLightboxIndex(heroIndex)}
+                className="w-full h-full object-cover absolute inset-0 cursor-zoom-in"
               />
             </AnimatePresence>
 
-            {/* Flechas — solo si hay más de 1 foto */}
             {photoUrls.length > 1 && (
               <>
                 <button
-                  onClick={heroPrev}
+                  onClick={(e) => { e.stopPropagation(); setHeroIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length); }}
                   className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={heroNext}
+                  onClick={(e) => { e.stopPropagation(); setHeroIndex((i) => (i + 1) % photoUrls.length); }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
 
-                {/* Indicadores */}
+                {/* Puntos indicadores */}
                 <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
                   {photoUrls.map((_, i) => (
                     <button
                       key={i}
-                      onClick={() => setHeroIndex(i)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        i === heroIndex ? 'bg-white scale-125' : 'bg-white/40'
-                      }`}
+                      onClick={(e) => { e.stopPropagation(); setHeroIndex(i); }}
+                      className={`w-2 h-2 rounded-full transition-all ${i === heroIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
                     />
                   ))}
                 </div>
 
-                {/* Contador */}
+                {/* Contador y hint */}
                 <div className="absolute bottom-16 right-6 z-10 text-xs text-white/70 bg-black/40 px-2 py-1 rounded-full">
                   {heroIndex + 1} / {photoUrls.length}
                 </div>
               </>
             )}
+
+            {/* Hint de clic */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 text-xs text-white/50 flex items-center space-x-1">
+              <span>Toca la foto para ampliar</span>
+            </div>
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff0080] to-[#7928ca] opacity-20">
@@ -244,9 +274,8 @@ export default function VenueDetail() {
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none" />
 
-        {/* Botón volver */}
         <div className="absolute top-6 left-6 z-10">
           <motion.button
             whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -258,7 +287,6 @@ export default function VenueDetail() {
           </motion.button>
         </div>
 
-        {/* Botones edit / favorito */}
         <div className="absolute top-6 right-6 flex items-center space-x-2 z-10">
           {userRole === 'venue_admin' && (
             <motion.button
@@ -283,7 +311,6 @@ export default function VenueDetail() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
-          {/* Nombre y rating */}
           <div className="flex items-start justify-between mb-6">
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">{venue.name}</h1>
@@ -306,7 +333,6 @@ export default function VenueDetail() {
             <p className="text-gray-300 text-lg mb-6">{venue.description}</p>
           )}
 
-          {/* Info cards */}
           <div className="grid md:grid-cols-2 gap-4 mb-8">
             <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
             {venue.price_range && (
@@ -316,15 +342,15 @@ export default function VenueDetail() {
               <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />
             )}
 
-            {/* ── Horarios: se muestra si el objeto tiene al menos 1 día con horas ── */}
-            {venue.opening_hours && Object.values(venue.opening_hours).some(h => h?.open && h?.close) && (
+            {/* ── Horarios — parseados y verificados ── */}
+            {hasHours && (
               <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
                 <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
                 <div className="w-full">
                   <p className="text-gray-500 text-sm mb-2">Horario de Atención</p>
                   <div className="space-y-1">
                     {DAYS_ORDER.map((dayKey) => {
-                      const hours = venue.opening_hours[dayKey];
+                      const hours = openingHours[dayKey];
                       if (!hours?.open || !hours?.close) return null;
                       return (
                         <div key={dayKey} className="flex justify-between text-sm">
@@ -364,29 +390,9 @@ export default function VenueDetail() {
             </div>
           </div>
 
-          {/* ── Galería con lightbox ── */}
-          {photoUrls.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-white mb-4">Fotos</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {photoUrls.map((url, i) => (
-                  <motion.div
-                    key={i}
-                    whileHover={{ scale: 1.03 }}
-                    onClick={() => setLightboxIndex(i)}
-                    className="aspect-square rounded-lg overflow-hidden bg-[#1a1a1a] cursor-pointer"
-                  >
-                    <img src={url} alt={`${venue.name} ${i + 1}`} className="w-full h-full object-cover" />
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Reseñas */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">Reseñas ({reviews.length})</h2>
-
             {user && (
               <form onSubmit={handleSubmitReview} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-6 mb-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Escribir una Reseña</h3>
@@ -454,49 +460,57 @@ export default function VenueDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
             onClick={() => setLightboxIndex(null)}
+            onTouchStart={handleLightboxTouchStart}
+            onTouchEnd={handleLightboxTouchEnd}
           >
-            {/* Botón cerrar */}
             <button
               onClick={() => setLightboxIndex(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
             >
               <X className="w-6 h-6" />
             </button>
 
-            {/* Flecha anterior */}
-            <button
-              onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length); }}
-              className="absolute left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
+            {photoUrls.length > 1 && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length); }}
+                  className="absolute left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i + 1) % photoUrls.length); }}
+                  className="absolute right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </>
+            )}
 
-            {/* Imagen */}
-            <motion.img
-              key={lightboxIndex}
-              src={photoUrls[lightboxIndex]}
-              alt={venue.name}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={(e) => e.stopPropagation()}
-              className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
-            />
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={lightboxIndex}
+                src={photoUrls[lightboxIndex]}
+                alt={venue.name}
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[92vw] max-h-[88vh] object-contain rounded-lg"
+              />
+            </AnimatePresence>
 
-            {/* Flecha siguiente */}
-            <button
-              onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i + 1) % photoUrls.length); }}
-              className="absolute right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-
-            {/* Contador */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
-              {lightboxIndex + 1} / {photoUrls.length}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5">
+              {photoUrls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
+                  className={`w-2 h-2 rounded-full transition-all ${i === lightboxIndex ? 'bg-white scale-125' : 'bg-white/30'}`}
+                />
+              ))}
             </div>
           </motion.div>
         )}
