@@ -125,7 +125,7 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
+            {/*<div>
               <label className="block text-sm font-medium text-gray-300 mb-3">
                 Tipo de Usuario
               </label>
@@ -154,7 +154,7 @@ export default function Login() {
                 </label>
               </div>
             </div>
-
+            */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                 Correo Electrónico
