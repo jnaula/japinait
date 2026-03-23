@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, X } from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -22,34 +22,33 @@ export default function EditVenue() {
   const [longitude, setLongitude] = useState(null);
 
   const [photos, setPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
 
+  // ✅ FIX 1: getUserLocation ya no se llama automáticamente
   useEffect(() => {
     fetchVenue();
     fetchVenueTypes();
-    getUserLocation();
   }, [id]);
 
-  // Obtener la ubicación del usuario
+  // Solo se usa como fallback si el venue no tiene coordenadas
   const getUserLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          // ✅ NO llamamos reverseGeocode para no pisar el address
           setLatitude(position.coords.latitude);
           setLongitude(position.coords.longitude);
-          reverseGeocode(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.warn('No se pudo obtener ubicación, usando predeterminada', error);
           setLatitude(-0.1807);
           setLongitude(-78.4678);
-          reverseGeocode(-0.1807, -78.4678);
         }
       );
     } else {
       setLatitude(-0.1807);
       setLongitude(-78.4678);
-      reverseGeocode(-0.1807, -78.4678);
     }
   };
 
@@ -67,9 +66,14 @@ export default function EditVenue() {
       setDescription(data.description);
       setAddress(data.address);
       setVenueType(data.venue_type_id);
+
       if (data.latitude && data.longitude) {
+        // ✅ Venue tiene coords → las usamos SIN llamar reverseGeocode
         setLatitude(data.latitude);
         setLongitude(data.longitude);
+      } else {
+        // Solo si no hay coordenadas guardadas usamos la ubicación del usuario
+        getUserLocation();
       }
 
       const { data: photosData } = await supabase
@@ -90,7 +94,7 @@ export default function EditVenue() {
     if (data) setVenueTypes(data);
   }
 
-  // Reverse Geocoding: obtiene dirección a partir de lat/lng
+  // reverseGeocode solo cuando el usuario mueve el pin manualmente
   const reverseGeocode = async (lat, lng) => {
     try {
       const res = await fetch(
@@ -105,8 +109,27 @@ export default function EditVenue() {
     }
   };
 
+  // ✅ FIX 2: Preview de fotos nuevas con createObjectURL
+  const handlePhotoChange = (e) => {
+    const newFiles = [...e.target.files];
+    if (newFiles.length === 0) return;
+
+    setPhotos((prev) => [...prev, ...newFiles]);
+
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setPhotoPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  // Eliminar foto nueva antes de guardar
+  const handleRemoveNewPhoto = (index) => {
+    URL.revokeObjectURL(photoPreviews[index]); // liberar memoria
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleUpdate = async () => {
-    if (!name || !address || !venueType) return alert('Completa nombre, dirección y tipo de local');
+    if (!name || !address || !venueType)
+      return alert('Completa nombre, dirección y tipo de local');
 
     const { error } = await supabase
       .from('venues')
@@ -116,11 +139,18 @@ export default function EditVenue() {
 
     for (const file of photos) {
       const fileName = `${id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from('venue-photos').upload(fileName, file);
+      const { error: uploadError } = await supabase.storage
+        .from('venue-photos')
+        .upload(fileName, file);
       if (!uploadError) {
-        await supabase.from('venue_photos').insert({ venue_id: id, photo_url: fileName, is_primary: false });
+        await supabase
+          .from('venue_photos')
+          .insert({ venue_id: id, photo_url: fileName, is_primary: false });
       }
     }
+
+    // Limpiar URLs de objeto al guardar
+    photoPreviews.forEach((url) => URL.revokeObjectURL(url));
 
     alert('Local actualizado 🔥');
     navigate(`/venue/${id}`);
@@ -186,7 +216,7 @@ export default function EditVenue() {
                 const lng = e.latLng.lng();
                 setLatitude(lat);
                 setLongitude(lng);
-                reverseGeocode(lat, lng);
+                reverseGeocode(lat, lng); // ✅ Solo aquí se actualiza el address
               }}
             >
               <AdvancedMarker
@@ -208,29 +238,62 @@ export default function EditVenue() {
       )}
 
       <div>
-        <label className="block mb-2">Fotos existentes</label>
-        <div className="flex space-x-2 overflow-x-auto">
+        <label className="block mb-2 font-semibold">Fotos existentes</label>
+        <div className="flex flex-wrap gap-2">
+          {existingPhotos.length === 0 && (
+            <p className="text-sm text-gray-500">Sin fotos guardadas</p>
+          )}
           {existingPhotos.map((photo) => {
-            const url = supabase.storage.from('venue-photos').getPublicUrl(photo.photo_url).data.publicUrl;
+            const url = supabase.storage
+              .from('venue-photos')
+              .getPublicUrl(photo.photo_url).data.publicUrl;
             return (
               <div key={photo.id} className="relative w-24 h-24">
-                <img src={url} className="w-24 h-24 object-cover rounded-lg" />
+                <img src={url} className="w-24 h-24 object-cover rounded-lg" alt="foto existente" />
                 <button
                   onClick={() => handleDeletePhoto(photo.id)}
-                  className="absolute top-0 right-0 p-1 bg-black/70 rounded-full hover:bg-red-600"
+                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4 text-white" />
+                  <Trash2 className="w-3 h-3 text-white" />
                 </button>
               </div>
             );
           })}
         </div>
 
-        <label className="block mt-4 mb-2">Añadir fotos</label>
-        <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080]">
-          <Plus className="w-6 h-6 text-white" />
-          <input type="file" multiple className="hidden" onChange={(e) => setPhotos([...photos, ...e.target.files])} />
-        </label>
+        {/* ✅ FIX 2: Previews de fotos nuevas */}
+        <label className="block mt-4 mb-2 font-semibold">Añadir fotos</label>
+        <div className="flex flex-wrap gap-2">
+          {photoPreviews.map((previewUrl, index) => (
+            <div key={index} className="relative w-24 h-24">
+              <img
+                src={previewUrl}
+                className="w-24 h-24 object-cover rounded-lg opacity-80 border border-[#ff0080]"
+                alt={`nueva foto ${index + 1}`}
+              />
+              <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-[#ff0080]/80 rounded-b-lg py-0.5">
+                Nueva
+              </span>
+              <button
+                onClick={() => handleRemoveNewPhoto(index)}
+                className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
+              >
+                <X className="w-3 h-3 text-white" />
+              </button>
+            </div>
+          ))}
+
+          <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
+            <Plus className="w-6 h-6 text-white" />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+          </label>
+        </div>
       </div>
 
       <button
