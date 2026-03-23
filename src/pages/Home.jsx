@@ -76,7 +76,7 @@ export default function Home() {
 
   const getFilteredAndSortedVenues = () => {
     let filtered = venues.filter((venue) => {
-      const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
+      const matchesType = selectedType === 'all' || venue.venue_type_id === parseInt(selectedType);
       const matchesSearch = venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         venue.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -129,7 +129,7 @@ export default function Home() {
                 />
               </div>
 
-              <div className="md:w-48">
+              {/*<div className="md:w-48">
                 <div className="flex items-center space-x-3 mb-3">
                   <Clock className="w-5 h-5 text-[#ff0080]" />
                   <h2 className="text-lg font-semibold text-white">Ordenar Por</h2>
@@ -142,9 +142,10 @@ export default function Home() {
                   <option value="recent">Más Recientes</option>
                   <option value="name">Nombre (A-Z)</option>
                 </select>
-              </div>
-            </div>
-          </motion.div>
+                </div>
+                */}
+                 </div>
+               </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -156,26 +157,27 @@ export default function Home() {
               <Filter className="w-5 h-5 text-[#ff0080]" />
               <h2 className="text-lg font-semibold text-white">Filtrar por Tipo</h2>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <FilterButton
-                active={selectedType === 'all'}
-                onClick={() => setSelectedType('all')}
-              >
-                Todos ({venues.length})
-              </FilterButton>
-              {venueTypes.map((type) => {
-                const count = venues.filter(v => v.venue_type_id === type.id).length;
-                return (
-                  <FilterButton
-                    key={type.id}
-                    active={selectedType === type.id}
-                    onClick={() => setSelectedType(type.id)}
-                  >
-                    {type.name} ({count})
-                  </FilterButton>
-                );
-              })}
-            </div>
+            <div>
+  <select
+    value={selectedType}
+    onChange={(e) => setSelectedType(e.target.value)}
+    className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors"
+  >
+    <option value="all">
+      Todos ({venues.length})
+    </option>
+
+    {venueTypes.map((type) => {
+      const count = venues.filter(v => v.venue_type_id === type.id).length;
+
+      return (
+        <option key={type.id} value={type.id}>
+          {type.name} ({count})
+        </option>
+      );
+    })}
+  </select>
+</div>
           </motion.div>
         </div>
 
