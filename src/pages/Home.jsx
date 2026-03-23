@@ -51,13 +51,19 @@ export default function Home() {
       if (error) throw error;
 
       const processedVenues = data.map((venue) => {
-        const primaryPhoto = venue.venue_photos?.find((p) => p.is_primary);
-        return {
-          ...venue,
-          venue_type_name: venue.venue_types?.name,
-          primary_photo: primaryPhoto?.photo_url || venue.venue_photos?.[0]?.photo_url,
-        };
-      });
+  const primaryPhoto = venue.venue_photos?.find((p) => p.is_primary);
+  const photoPath = primaryPhoto?.photo_url || venue.venue_photos?.[0]?.photo_url;
+
+  const imageUrl = photoPath
+    ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
+    : null;
+
+  return {
+    ...venue,
+    venue_type_name: venue.venue_types?.name,
+    primary_photo: imageUrl, // 🔥 ahora SI es URL
+  };
+});
 
       console.log('Home: Venues fetched:', processedVenues.length);
       setVenues(processedVenues);
