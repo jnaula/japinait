@@ -76,7 +76,7 @@ export default function Home() {
 
   const getFilteredAndSortedVenues = () => {
     let filtered = venues.filter((venue) => {
-      const matchesType = selectedType === 'all' || venue.venue_type_id === parseInt(selectedType);
+      const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
       const matchesSearch = venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         venue.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
