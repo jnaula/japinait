@@ -507,40 +507,7 @@ setPromotions(promoData || []);
   </motion.button>
 )}
 
-
-          <div className="grid md:grid-cols-2 gap-4 mb-8">
-            <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
-            {venue.price_range && (
-              <InfoCard icon={DollarSign} label="Rango de Precios" value={venue.price_range} />
-            )}
-            {venue.music_type && (
-              <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />
-            )}
-            {hasHours && (
-              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
-                <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
-                <div className="w-full">
-                  <p className="text-gray-500 text-sm mb-2">Horario de Atención</p>
-                  <div className="space-y-1">
-                    {DAYS_ORDER.map((dayKey) => {
-                      const hours = openingHours[dayKey];
-                      if (!hours?.open || !hours?.close) return null;
-                      return (
-                        <div key={dayKey} className="flex justify-between text-sm">
-                          <span className="text-gray-400 w-24">{DAYS_TRANSLATION[dayKey]}:</span>
-                          <span className="text-white font-medium">
-                            {hours.open} - {hours.close}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Mapa */}
+{/* Mapa */}
           <div className="mb-8 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
@@ -588,7 +555,40 @@ setPromotions(promoData || []);
             </p>
           </div>
 
-          {/* Reseñas */}
+          <div className="grid md:grid-cols-2 gap-4 mb-8">
+            <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
+            {venue.price_range && (
+              <InfoCard icon={DollarSign} label="Rango de Precios" value={venue.price_range} />
+            )}
+            {venue.music_type && (
+              <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />
+            )}
+            {hasHours && (
+              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
+                <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <p className="text-gray-500 text-sm mb-2">Horario de Atención</p>
+                  <div className="space-y-1">
+                    {DAYS_ORDER.map((dayKey) => {
+                      const hours = openingHours[dayKey];
+                      if (!hours?.open || !hours?.close) return null;
+                      return (
+                        <div key={dayKey} className="flex justify-between text-sm">
+                          <span className="text-gray-400 w-24">{DAYS_TRANSLATION[dayKey]}:</span>
+                          <span className="text-white font-medium">
+                            {hours.open} - {hours.close}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          
+          {/* Reseñas 
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4">
               Reseñas ({reviews.length})
@@ -681,7 +681,7 @@ setPromotions(promoData || []);
                 </motion.div>
               ))}
             </div>
-          </div>
+          </div>*/}
 
         </motion.div>
       </div>
