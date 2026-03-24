@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Trash2, Plus, X, Crown, Tag } from 'lucide-react';
+import { Trash2, Plus, X, Crown, Tag, Pencil } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 
 export default function EditVenue() {
@@ -30,6 +30,11 @@ export default function EditVenue() {
   const [newPromoDescription, setNewPromoDescription] = useState('');
   const [addingPromo, setAddingPromo] = useState(false);
   const [showPromoForm, setShowPromoForm] = useState(false);
+
+  // Edición de promociones
+  const [editingPromo, setEditingPromo] = useState(null);
+  const [editPromoTitle, setEditPromoTitle] = useState('');
+  const [editPromoDescription, setEditPromoDescription] = useState('');
 
   useEffect(() => {
     fetchVenue();
@@ -109,6 +114,26 @@ export default function EditVenue() {
     if (!confirm('¿Eliminar esta promoción?')) return;
     const { error } = await supabase.from('promotions').delete().eq('id', promoId);
     if (!error) setPromotions(promotions.filter((p) => p.id !== promoId));
+  };
+
+  const handleEditPromo = (promo) => {
+    setEditingPromo(promo.id);
+    setEditPromoTitle(promo.title);
+    setEditPromoDescription(promo.description || '');
+  };
+
+  const handleSaveEditPromo = async (promoId) => {
+    if (!editPromoTitle.trim()) return alert('El título es obligatorio');
+    const { error } = await supabase
+      .from('promotions')
+      .update({
+        title: editPromoTitle.trim(),
+        description: editPromoDescription.trim() || null,
+      })
+      .eq('id', promoId);
+    if (error) return alert('Error al actualizar promoción');
+    setEditingPromo(null);
+    fetchPromotions();
   };
 
   const handlePhotoChange = (e) => {
@@ -215,7 +240,7 @@ export default function EditVenue() {
         />
       )}
 
-      {/* ✅ SECCIÓN PROMOCIONES */}
+      {/* SECCIÓN PROMOCIONES */}
       <div className="border border-[#222] rounded-xl overflow-hidden">
         <div className="flex items-center justify-between p-4 bg-[#111]">
           <div className="flex items-center space-x-2">
@@ -271,28 +296,73 @@ export default function EditVenue() {
           </div>
         )}
 
-        {/* Lista de promos existentes */}
+        {/* Lista de promos */}
         {promotions.length > 0 && (
           <div className="divide-y divide-[#222]">
             {promotions.map((promo) => (
-              <div key={promo.id} className="flex items-start justify-between p-4 bg-[#0a0a0a]">
-                <div className="flex items-start space-x-3">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Tag className="w-3 h-3 text-white" />
+              <div key={promo.id} className="p-4 bg-[#0a0a0a]">
+                {editingPromo === promo.id ? (
+                  // Modo edición
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editPromoTitle}
+                      onChange={(e) => setEditPromoTitle(e.target.value)}
+                      placeholder="Título *"
+                      className="w-full p-3 rounded-lg bg-[#111] border border-[#ff0080] focus:outline-none text-sm text-white"
+                    />
+                    <textarea
+                      value={editPromoDescription}
+                      onChange={(e) => setEditPromoDescription(e.target.value)}
+                      rows={2}
+                      placeholder="Descripción (opcional)"
+                      className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080] text-sm text-white resize-none"
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleSaveEditPromo(promo.id)}
+                        className="flex-1 py-2 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors text-sm font-semibold"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        onClick={() => setEditingPromo(null)}
+                        className="px-4 py-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-sm text-gray-300"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-medium text-sm">{promo.title}</p>
-                    {promo.description && (
-                      <p className="text-gray-400 text-xs mt-0.5">{promo.description}</p>
-                    )}
+                ) : (
+                  // Modo vista
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Tag className="w-3 h-3 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-white font-medium text-sm">{promo.title}</p>
+                        {promo.description && (
+                          <p className="text-gray-400 text-xs mt-0.5 whitespace-pre-line">{promo.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleEditPromo(promo)}
+                        className="p-1.5 rounded-full hover:bg-[#ff0080]/20 text-gray-500 hover:text-[#ff0080] transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePromo(promo.id)}
+                        className="p-1.5 rounded-full hover:bg-red-600/20 text-gray-500 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button
-                  onClick={() => handleDeletePromo(promo.id)}
-                  className="p-1.5 rounded-full hover:bg-red-600/20 text-gray-500 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                )}
               </div>
             ))}
           </div>
@@ -317,14 +387,26 @@ export default function EditVenue() {
             const isPrimary = primaryPhoto === `existing-${photo.id}`;
             return (
               <div key={photo.id} className="relative w-24 h-24">
-                <img src={url} className={`w-24 h-24 object-cover rounded-lg transition-all ${isPrimary ? 'ring-2 ring-yellow-400' : ''}`} alt="foto existente" />
+                <img
+                  src={url}
+                  className={`w-24 h-24 object-cover rounded-lg transition-all ${isPrimary ? 'ring-2 ring-yellow-400' : ''}`}
+                  alt="foto existente"
+                />
                 {isPrimary && (
-                  <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-yellow-400/90 text-black font-bold rounded-b-lg py-0.5">Principal</span>
+                  <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-yellow-400/90 text-black font-bold rounded-b-lg py-0.5">
+                    Principal
+                  </span>
                 )}
-                <button onClick={() => setPrimaryPhoto(`existing-${photo.id}`)} className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'}`}>
+                <button
+                  onClick={() => setPrimaryPhoto(`existing-${photo.id}`)}
+                  className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'}`}
+                >
                   <Crown className="w-3 h-3" />
                 </button>
-                <button onClick={() => handleDeletePhoto(photo.id)} className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors">
+                <button
+                  onClick={() => handleDeletePhoto(photo.id)}
+                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
+                >
                   <Trash2 className="w-3 h-3 text-white" />
                 </button>
               </div>
@@ -338,14 +420,24 @@ export default function EditVenue() {
             const isPrimary = primaryPhoto === `new-${index}`;
             return (
               <div key={index} className="relative w-24 h-24">
-                <img src={previewUrl} className={`w-24 h-24 object-cover rounded-lg opacity-90 transition-all ${isPrimary ? 'ring-2 ring-yellow-400' : 'border border-[#ff0080]'}`} alt={`nueva foto ${index + 1}`} />
+                <img
+                  src={previewUrl}
+                  className={`w-24 h-24 object-cover rounded-lg opacity-90 transition-all ${isPrimary ? 'ring-2 ring-yellow-400' : 'border border-[#ff0080]'}`}
+                  alt={`nueva foto ${index + 1}`}
+                />
                 <span className={`absolute bottom-0 left-0 right-0 text-center text-[10px] rounded-b-lg py-0.5 font-bold ${isPrimary ? 'bg-yellow-400/90 text-black' : 'bg-[#ff0080]/80 text-white'}`}>
                   {isPrimary ? 'Principal' : 'Nueva'}
                 </span>
-                <button onClick={() => setPrimaryPhoto(`new-${index}`)} className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'}`}>
+                <button
+                  onClick={() => setPrimaryPhoto(`new-${index}`)}
+                  className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'}`}
+                >
                   <Crown className="w-3 h-3" />
                 </button>
-                <button onClick={() => handleRemoveNewPhoto(index)} className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors">
+                <button
+                  onClick={() => handleRemoveNewPhoto(index)}
+                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
+                >
                   <X className="w-3 h-3 text-white" />
                 </button>
               </div>
@@ -354,7 +446,13 @@ export default function EditVenue() {
 
           <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
             <Plus className="w-6 h-6 text-white" />
-            <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoChange} />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
           </label>
         </div>
 
@@ -374,3 +472,4 @@ export default function EditVenue() {
     </div>
   );
 }
+
