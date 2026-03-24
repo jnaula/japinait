@@ -1,220 +1,235 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Loader2, LocateFixed } from 'lucide-react';
-import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { Trash2, Plus, X } from 'lucide-react';
+import MapPicker from '../components/MapPicker'; // ✅ Usar MapPicker como las demás páginas
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
+export default function EditVenue() {
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
-  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
-  { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-  { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
-];
+  const [venue, setVenue] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [venueTypes, setVenueTypes] = useState([]);
 
-async function reverseGeocode(lat, lng) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.status === 'OK' && data.results[0]) {
-    return data.results[0].formatted_address;
-  }
-  return null;
-}
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [address, setAddress] = useState('');
+  const [venueType, setVenueType] = useState('');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
 
-async function geolocateByNetwork() {
-  const url = `https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_MAPS_API_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ considerIp: true }),
-  });
-  const data = await res.json();
-  if (data.location) {
-    return { lat: data.location.lat, lng: data.location.lng };
-  }
-  return null;
-}
-
-function MapContent({ center, flyTo, onLocationChange, onAddressChange }) {
-  const map = useMap();
-  const [markerPos, setMarkerPos] = useState(center);
-
-  // Cuando flyTo cambia, animar el mapa hacia esa posición
-  useEffect(() => {
-    if (!map || !flyTo) return;
-    map.panTo(flyTo);
-    map.setZoom(16);
-  }, [flyTo]);
+  const [photos, setPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [existingPhotos, setExistingPhotos] = useState([]);
 
   useEffect(() => {
-    setMarkerPos(center);
-  }, [center.lat, center.lng]);
+    fetchVenue();
+    fetchVenueTypes();
+  }, [id]);
 
-  const handlePositionChange = async (lat, lng) => {
-    setMarkerPos({ lat, lng });
-    onLocationChange(lat, lng);
-    const address = await reverseGeocode(lat, lng);
-    if (address) onAddressChange(address);
-  };
-
-  const handleDragEnd = (e) => {
-    if (e.latLng) {
-      handlePositionChange(e.latLng.lat(), e.latLng.lng());
-    }
-  };
-
-  const handleMapClick = (e) => {
-    if (e.detail?.latLng) {
-      handlePositionChange(e.detail.latLng.lat, e.detail.latLng.lng);
-    }
-  };
-
-  return (
-    <Map
-      defaultZoom={15}
-      defaultCenter={center}
-      gestureHandling="greedy"
-      mapId="nerd-map"
-      options={{
-        styles: darkMapStyle,
-        streetViewControl: false,
-        mapTypeControl: false,
-      }}
-      onClick={handleMapClick}
-      className="w-full h-full"
-    >
-      <AdvancedMarker
-        position={markerPos}
-        draggable={true}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-          <div className="w-2 h-2 bg-white rounded-full" />
-        </div>
-      </AdvancedMarker>
-    </Map>
-  );
-}
-
-export default function MapPicker({ location, onLocationChange, onAddressChange }) {
-  const defaultCenter = { lat: -0.1807, lng: -78.4678 };
-  const [center, setCenter] = useState(
-    location ? { lat: parseFloat(location.lat), lng: parseFloat(location.lng) } : defaultCenter
-  );
-  const [flyTo, setFlyTo] = useState(null);
-  const [locating, setLocating] = useState(false);
-  const [geoError, setGeoError] = useState(null);
-
-  const handleLocateMe = async () => {
-    setGeoError(null);
-    setLocating(true);
-
-    const tryNativeGeo = () =>
-      new Promise((resolve) => {
-        if (!navigator.geolocation) return resolve(null);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
-      });
-
-    const tryNetworkGeo = async () => {
-      try {
-        return await geolocateByNetwork();
-      } catch {
-        return null;
-      }
-    };
-
+  async function fetchVenue() {
     try {
-      let coords = await tryNativeGeo();
-      if (!coords) coords = await tryNetworkGeo();
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
 
-      if (coords) {
-        setCenter(coords);
-        setFlyTo({ ...coords, _t: Date.now() }); // _t fuerza re-render si coords son iguales
-        onLocationChange(coords.lat, coords.lng);
-        const address = await reverseGeocode(coords.lat, coords.lng);
-        if (address) onAddressChange(address);
-      } else {
-        setGeoError('No se pudo detectar la ubicación. Selecciónala manualmente.');
+      setVenue(data);
+      setName(data.name);
+      setDescription(data.description);
+      setAddress(data.address);
+      setVenueType(data.venue_type_id);
+      if (data.latitude && data.longitude) {
+        setLatitude(data.latitude);
+        setLongitude(data.longitude);
       }
-    } catch {
-      setGeoError('Error al obtener la ubicación.');
+
+      const { data: photosData } = await supabase
+        .from('venue_photos')
+        .select('*')
+        .eq('venue_id', id)
+        .order('order_index');
+      setExistingPhotos(photosData || []);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setLocating(false);
+      setLoading(false);
     }
+  }
+
+  async function fetchVenueTypes() {
+    const { data } = await supabase.from('venue_types').select('*');
+    if (data) setVenueTypes(data);
+  }
+
+  const handlePhotoChange = (e) => {
+    const newFiles = [...e.target.files];
+    if (newFiles.length === 0) return;
+    setPhotos((prev) => [...prev, ...newFiles]);
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setPhotoPreviews((prev) => [...prev, ...newPreviews]);
   };
 
-  useEffect(() => {
-    handleLocateMe();
-  }, []);
-
-  useEffect(() => {
-    if (location) {
-      setCenter({ lat: parseFloat(location.lat), lng: parseFloat(location.lng) });
-    }
-  }, [location]);
-
-  const handleLocationChange = (lat, lng) => {
-    setCenter({ lat, lng });
-    onLocationChange(lat, lng);
+  const handleRemoveNewPhoto = (index) => {
+    URL.revokeObjectURL(photoPreviews[index]);
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const handleUpdate = async () => {
+    if (!name || !address || !venueType)
+      return alert('Completa nombre, dirección y tipo de local');
+
+    const { error } = await supabase
+      .from('venues')
+      .update({ name, description, address, venue_type_id: venueType, latitude, longitude })
+      .eq('id', id);
+    if (error) return alert('Error al actualizar');
+
+    for (const file of photos) {
+      const fileName = `${id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('venue-photos')
+        .upload(fileName, file);
+      if (!uploadError) {
+        await supabase
+          .from('venue_photos')
+          .insert({ venue_id: id, photo_url: fileName, is_primary: false });
+      }
+    }
+
+    photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+    alert('Local actualizado 🔥');
+    navigate(`/venue/${id}`);
+  };
+
+  const handleDeletePhoto = async (photoId) => {
+    if (!confirm('¿Eliminar foto?')) return;
+    const { error } = await supabase.from('venue_photos').delete().eq('id', photoId);
+    if (!error) setExistingPhotos(existingPhotos.filter((p) => p.id !== photoId));
+  };
+
+  if (loading) return <div className="p-4 text-white">Cargando...</div>;
+  if (!venue) return <div className="p-4 text-white">No encontrado</div>;
 
   return (
-    <div className="w-full space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-sm text-gray-400">
-          <MapPin className="w-4 h-4" />
-          <span>Selecciona la ubicación en el mapa</span>
-        </div>
-        <button
-          onClick={handleLocateMe}
-          disabled={locating}
-          className="flex items-center space-x-1 text-xs text-[#ff0080] hover:text-[#ff40a0] disabled:opacity-50 transition-colors"
-        >
-          {locating
-            ? <Loader2 className="w-3 h-3 animate-spin" />
-            : <LocateFixed className="w-3 h-3" />
-          }
-          <span>{locating ? 'Localizando...' : 'Mi ubicación'}</span>
-        </button>
-      </div>
+    <div className="min-h-screen bg-black text-white p-4 max-w-3xl mx-auto space-y-4">
+      <h1 className="text-2xl font-bold mb-4">Editar Local</h1>
 
-      {geoError && (
-        <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded px-3 py-2">
-          {geoError}
-        </div>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Nombre"
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      />
+
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={4}
+        placeholder="Descripción"
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      />
+
+      <input
+        type="text"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        placeholder="Dirección"
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      />
+
+      <select
+        value={venueType}
+        onChange={(e) => setVenueType(e.target.value)}
+        className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+      >
+        <option value="">Selecciona un tipo</option>
+        {venueTypes.map((t) => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+
+      {/* ✅ Reemplazado por MapPicker igual que las demás páginas */}
+      {latitude && longitude && (
+        <MapPicker
+          location={{ lat: latitude, lng: longitude }}
+          onLocationChange={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+          onAddressChange={(addr) => setAddress(addr)}
+        />
       )}
 
-      <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden">
-        
-          <MapContent
-            center={center}
-            flyTo={flyTo}
-            onLocationChange={handleLocationChange}
-            onAddressChange={onAddressChange}
-          />
-        
+      <div>
+        <label className="block mb-2 font-semibold">Fotos existentes</label>
+        <div className="flex flex-wrap gap-2">
+          {existingPhotos.length === 0 && (
+            <p className="text-sm text-gray-500">Sin fotos guardadas</p>
+          )}
+          {existingPhotos.map((photo) => {
+            const url = supabase.storage
+              .from('venue-photos')
+              .getPublicUrl(photo.photo_url).data.publicUrl;
+            return (
+              <div key={photo.id} className="relative w-24 h-24">
+                <img src={url} className="w-24 h-24 object-cover rounded-lg" alt="foto existente" />
+                <button
+                  onClick={() => handleDeletePhoto(photo.id)}
+                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <Trash2 className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <label className="block mt-4 mb-2 font-semibold">Añadir fotos</label>
+        <div className="flex flex-wrap gap-2">
+          {photoPreviews.map((previewUrl, index) => (
+            <div key={index} className="relative w-24 h-24">
+              <img
+                src={previewUrl}
+                className="w-24 h-24 object-cover rounded-lg opacity-80 border border-[#ff0080]"
+                alt={`nueva foto ${index + 1}`}
+              />
+              <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-[#ff0080]/80 rounded-b-lg py-0.5">
+                Nueva
+              </span>
+              <button
+                onClick={() => handleRemoveNewPhoto(index)}
+                className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
+              >
+                <X className="w-3 h-3 text-white" />
+              </button>
+            </div>
+          ))}
+
+          <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
+            <Plus className="w-6 h-6 text-white" />
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+          </label>
+        </div>
       </div>
-      <div className="text-xs text-gray-500">
-        Haz clic en el mapa o arrastra el marcador para ajustar la ubicación.
-      </div>
+
+      <button
+        onClick={handleUpdate}
+        className="w-full py-3 mt-4 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold"
+      >
+        Guardar cambios
+      </button>
     </div>
   );
 }
