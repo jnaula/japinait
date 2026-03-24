@@ -1,10 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Trash2, Plus, X } from 'lucide-react';
-
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
+import MapPicker from '../components/MapPicker'; // ✅ Usar MapPicker como las demás páginas
 
 export default function EditVenue() {
   const { id } = useParams();
@@ -25,32 +23,10 @@ export default function EditVenue() {
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
 
-  // ✅ FIX 1: getUserLocation ya no se llama automáticamente
   useEffect(() => {
     fetchVenue();
     fetchVenueTypes();
   }, [id]);
-
-  // Solo se usa como fallback si el venue no tiene coordenadas
-  const getUserLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // ✅ NO llamamos reverseGeocode para no pisar el address
-          setLatitude(position.coords.latitude);
-          setLongitude(position.coords.longitude);
-        },
-        (error) => {
-          console.warn('No se pudo obtener ubicación, usando predeterminada', error);
-          setLatitude(-0.1807);
-          setLongitude(-78.4678);
-        }
-      );
-    } else {
-      setLatitude(-0.1807);
-      setLongitude(-78.4678);
-    }
-  };
 
   async function fetchVenue() {
     try {
@@ -66,14 +42,9 @@ export default function EditVenue() {
       setDescription(data.description);
       setAddress(data.address);
       setVenueType(data.venue_type_id);
-
       if (data.latitude && data.longitude) {
-        // ✅ Venue tiene coords → las usamos SIN llamar reverseGeocode
         setLatitude(data.latitude);
         setLongitude(data.longitude);
-      } else {
-        // Solo si no hay coordenadas guardadas usamos la ubicación del usuario
-        getUserLocation();
       }
 
       const { data: photosData } = await supabase
@@ -94,35 +65,16 @@ export default function EditVenue() {
     if (data) setVenueTypes(data);
   }
 
-  // reverseGeocode solo cuando el usuario mueve el pin manualmente
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
-      );
-      const data = await res.json();
-      if (data.status === 'OK' && data.results.length > 0) {
-        setAddress(data.results[0].formatted_address);
-      }
-    } catch (err) {
-      console.error('Error de geocoding:', err);
-    }
-  };
-
-  // ✅ FIX 2: Preview de fotos nuevas con createObjectURL
   const handlePhotoChange = (e) => {
     const newFiles = [...e.target.files];
     if (newFiles.length === 0) return;
-
     setPhotos((prev) => [...prev, ...newFiles]);
-
     const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
     setPhotoPreviews((prev) => [...prev, ...newPreviews]);
   };
 
-  // Eliminar foto nueva antes de guardar
   const handleRemoveNewPhoto = (index) => {
-    URL.revokeObjectURL(photoPreviews[index]); // liberar memoria
+    URL.revokeObjectURL(photoPreviews[index]);
     setPhotos((prev) => prev.filter((_, i) => i !== index));
     setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
   };
@@ -149,9 +101,7 @@ export default function EditVenue() {
       }
     }
 
-    // Limpiar URLs de objeto al guardar
     photoPreviews.forEach((url) => URL.revokeObjectURL(url));
-
     alert('Local actualizado 🔥');
     navigate(`/venue/${id}`);
   };
@@ -204,37 +154,16 @@ export default function EditVenue() {
         ))}
       </select>
 
+      {/* ✅ Reemplazado por MapPicker igual que las demás páginas */}
       {latitude && longitude && (
-        <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
-          
-            <Map
-              defaultZoom={15}
-              defaultCenter={{ lat: latitude, lng: longitude }}
-              options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
-              onClick={(e) => {
-                const lat = e.latLng.lat();
-                const lng = e.latLng.lng();
-                setLatitude(lat);
-                setLongitude(lng);
-                reverseGeocode(lat, lng); // ✅ Solo aquí se actualiza el address
-              }}
-            >
-              <AdvancedMarker
-                position={{ lat: latitude, lng: longitude }}
-                draggable
-                onDragEnd={(e) => {
-                  const lat = e.latLng.lat();
-                  const lng = e.latLng.lng();
-                  setLatitude(lat);
-                  setLongitude(lng);
-                  reverseGeocode(lat, lng);
-                }}
-              >
-                <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white" />
-              </AdvancedMarker>
-            </Map>
-          
-        </div>
+        <MapPicker
+          location={{ lat: latitude, lng: longitude }}
+          onLocationChange={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+          onAddressChange={(addr) => setAddress(addr)}
+        />
       )}
 
       <div>
@@ -261,7 +190,6 @@ export default function EditVenue() {
           })}
         </div>
 
-        {/* ✅ FIX 2: Previews de fotos nuevas */}
         <label className="block mt-4 mb-2 font-semibold">Añadir fotos</label>
         <div className="flex flex-wrap gap-2">
           {photoPreviews.map((previewUrl, index) => (
