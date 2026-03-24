@@ -195,6 +195,7 @@ export default function VenueDetail() {
         .from('venue_photos')
         .select('*')
         .eq('venue_id', id)
+        .order('is_primary',{ascending:false})
         .order('order_index');
       if (!photosError) setPhotos(photosData || []);
 
