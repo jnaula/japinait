@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Trash2, Plus, X } from 'lucide-react';
-import MapPicker from '../components/MapPicker'; // ✅ Usar MapPicker como las demás páginas
+import { Trash2, Plus, X, Crown } from 'lucide-react';
+import MapPicker from '../components/MapPicker';
 
 export default function EditVenue() {
   const { id } = useParams();
@@ -22,6 +22,10 @@ export default function EditVenue() {
   const [photos, setPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
+
+  // ✅ Guarda el id o índice de la foto principal
+  // 'existing-{id}' para fotos existentes, 'new-{index}' para fotos nuevas
+  const [primaryPhoto, setPrimaryPhoto] = useState(null);
 
   useEffect(() => {
     fetchVenue();
@@ -52,7 +56,13 @@ export default function EditVenue() {
         .select('*')
         .eq('venue_id', id)
         .order('order_index');
+
       setExistingPhotos(photosData || []);
+
+      // ✅ Pre-seleccionar la foto que ya es principal
+      const currentPrimary = photosData?.find((p) => p.is_primary);
+      if (currentPrimary) setPrimaryPhoto(`existing-${currentPrimary.id}`);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -77,6 +87,8 @@ export default function EditVenue() {
     URL.revokeObjectURL(photoPreviews[index]);
     setPhotos((prev) => prev.filter((_, i) => i !== index));
     setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+    // Si la foto eliminada era la principal, limpiar selección
+    if (primaryPhoto === `new-${index}`) setPrimaryPhoto(null);
   };
 
   const handleUpdate = async () => {
@@ -89,15 +101,27 @@ export default function EditVenue() {
       .eq('id', id);
     if (error) return alert('Error al actualizar');
 
-    for (const file of photos) {
+    // ✅ Actualizar is_primary en fotos existentes
+    for (const photo of existingPhotos) {
+      const isPrimary = primaryPhoto === `existing-${photo.id}`;
+      await supabase
+        .from('venue_photos')
+        .update({ is_primary: isPrimary })
+        .eq('id', photo.id);
+    }
+
+    // ✅ Subir fotos nuevas con is_primary correcto
+    for (let i = 0; i < photos.length; i++) {
+      const file = photos[i];
       const fileName = `${id}/${Date.now()}_${file.name}`;
+      const isPrimary = primaryPhoto === `new-${i}`;
       const { error: uploadError } = await supabase.storage
         .from('venue-photos')
         .upload(fileName, file);
       if (!uploadError) {
         await supabase
           .from('venue_photos')
-          .insert({ venue_id: id, photo_url: fileName, is_primary: false });
+          .insert({ venue_id: id, photo_url: fileName, is_primary: isPrimary });
       }
     }
 
@@ -109,7 +133,10 @@ export default function EditVenue() {
   const handleDeletePhoto = async (photoId) => {
     if (!confirm('¿Eliminar foto?')) return;
     const { error } = await supabase.from('venue_photos').delete().eq('id', photoId);
-    if (!error) setExistingPhotos(existingPhotos.filter((p) => p.id !== photoId));
+    if (!error) {
+      setExistingPhotos(existingPhotos.filter((p) => p.id !== photoId));
+      if (primaryPhoto === `existing-${photoId}`) setPrimaryPhoto(null);
+    }
   };
 
   if (loading) return <div className="p-4 text-white">Cargando...</div>;
@@ -154,7 +181,6 @@ export default function EditVenue() {
         ))}
       </select>
 
-      {/* ✅ Reemplazado por MapPicker igual que las demás páginas */}
       {latitude && longitude && (
         <MapPicker
           location={{ lat: latitude, lng: longitude }}
@@ -176,9 +202,35 @@ export default function EditVenue() {
             const url = supabase.storage
               .from('venue-photos')
               .getPublicUrl(photo.photo_url).data.publicUrl;
+            const isPrimary = primaryPhoto === `existing-${photo.id}`;
             return (
               <div key={photo.id} className="relative w-24 h-24">
-                <img src={url} className="w-24 h-24 object-cover rounded-lg" alt="foto existente" />
+                <img
+                  src={url}
+                  className={`w-24 h-24 object-cover rounded-lg transition-all ${
+                    isPrimary ? 'ring-2 ring-yellow-400' : ''
+                  }`}
+                  alt="foto existente"
+                />
+                {/* Badge principal */}
+                {isPrimary && (
+                  <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-yellow-400/90 text-black font-bold rounded-b-lg py-0.5">
+                    Principal
+                  </span>
+                )}
+                {/* Botón corona */}
+                <button
+                  onClick={() => setPrimaryPhoto(`existing-${photo.id}`)}
+                  className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${
+                    isPrimary
+                      ? 'bg-yellow-400 text-black'
+                      : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'
+                  }`}
+                  title="Marcar como principal"
+                >
+                  <Crown className="w-3 h-3" />
+                </button>
+                {/* Botón eliminar */}
                 <button
                   onClick={() => handleDeletePhoto(photo.id)}
                   className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
@@ -192,24 +244,45 @@ export default function EditVenue() {
 
         <label className="block mt-4 mb-2 font-semibold">Añadir fotos</label>
         <div className="flex flex-wrap gap-2">
-          {photoPreviews.map((previewUrl, index) => (
-            <div key={index} className="relative w-24 h-24">
-              <img
-                src={previewUrl}
-                className="w-24 h-24 object-cover rounded-lg opacity-80 border border-[#ff0080]"
-                alt={`nueva foto ${index + 1}`}
-              />
-              <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-[#ff0080]/80 rounded-b-lg py-0.5">
-                Nueva
-              </span>
-              <button
-                onClick={() => handleRemoveNewPhoto(index)}
-                className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
-              >
-                <X className="w-3 h-3 text-white" />
-              </button>
-            </div>
-          ))}
+          {photoPreviews.map((previewUrl, index) => {
+            const isPrimary = primaryPhoto === `new-${index}`;
+            return (
+              <div key={index} className="relative w-24 h-24">
+                <img
+                  src={previewUrl}
+                  className={`w-24 h-24 object-cover rounded-lg opacity-90 transition-all ${
+                    isPrimary ? 'ring-2 ring-yellow-400' : 'border border-[#ff0080]'
+                  }`}
+                  alt={`nueva foto ${index + 1}`}
+                />
+                {/* Badge */}
+                <span className={`absolute bottom-0 left-0 right-0 text-center text-[10px] rounded-b-lg py-0.5 font-bold ${
+                  isPrimary ? 'bg-yellow-400/90 text-black' : 'bg-[#ff0080]/80 text-white'
+                }`}>
+                  {isPrimary ? 'Principal' : 'Nueva'}
+                </span>
+                {/* Botón corona */}
+                <button
+                  onClick={() => setPrimaryPhoto(`new-${index}`)}
+                  className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${
+                    isPrimary
+                      ? 'bg-yellow-400 text-black'
+                      : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'
+                  }`}
+                  title="Marcar como principal"
+                >
+                  <Crown className="w-3 h-3" />
+                </button>
+                {/* Botón eliminar */}
+                <button
+                  onClick={() => handleRemoveNewPhoto(index)}
+                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            );
+          })}
 
           <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
             <Plus className="w-6 h-6 text-white" />
@@ -222,6 +295,13 @@ export default function EditVenue() {
             />
           </label>
         </div>
+
+        {/* ✅ Indicador si no hay principal seleccionada */}
+        {!primaryPhoto && (existingPhotos.length > 0 || photos.length > 0) && (
+          <p className="text-xs text-yellow-500 mt-2">
+            👑 Ninguna foto marcada como principal. Toca la corona para elegir una.
+          </p>
+        )}
       </div>
 
       <button
