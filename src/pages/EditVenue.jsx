@@ -206,7 +206,7 @@ export default function EditVenue() {
 
       {latitude && longitude && (
         <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
-          
+         
             <Map
               defaultZoom={15}
               defaultCenter={{ lat: latitude, lng: longitude }}
@@ -233,7 +233,7 @@ export default function EditVenue() {
                 <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white" />
               </AdvancedMarker>
             </Map>
-          </APIProvider>
+         
         </div>
       )}
 
