@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Trash2, Plus, X, Crown } from 'lucide-react';
+import { Trash2, Plus, X, Crown, Tag } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 
 export default function EditVenue() {
@@ -22,14 +22,19 @@ export default function EditVenue() {
   const [photos, setPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
-
-  // ✅ Guarda el id o índice de la foto principal
-  // 'existing-{id}' para fotos existentes, 'new-{index}' para fotos nuevas
   const [primaryPhoto, setPrimaryPhoto] = useState(null);
+
+  // Promociones
+  const [promotions, setPromotions] = useState([]);
+  const [newPromoTitle, setNewPromoTitle] = useState('');
+  const [newPromoDescription, setNewPromoDescription] = useState('');
+  const [addingPromo, setAddingPromo] = useState(false);
+  const [showPromoForm, setShowPromoForm] = useState(false);
 
   useEffect(() => {
     fetchVenue();
     fetchVenueTypes();
+    fetchPromotions();
   }, [id]);
 
   async function fetchVenue() {
@@ -56,13 +61,10 @@ export default function EditVenue() {
         .select('*')
         .eq('venue_id', id)
         .order('order_index');
-
       setExistingPhotos(photosData || []);
 
-      // ✅ Pre-seleccionar la foto que ya es principal
       const currentPrimary = photosData?.find((p) => p.is_primary);
       if (currentPrimary) setPrimaryPhoto(`existing-${currentPrimary.id}`);
-
     } catch (err) {
       console.error(err);
     } finally {
@@ -74,6 +76,40 @@ export default function EditVenue() {
     const { data } = await supabase.from('venue_types').select('*');
     if (data) setVenueTypes(data);
   }
+
+  async function fetchPromotions() {
+    const { data } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('venue_id', id)
+      .order('created_at', { ascending: false });
+    setPromotions(data || []);
+  }
+
+  const handleAddPromo = async () => {
+    if (!newPromoTitle.trim()) return alert('El título es obligatorio');
+    setAddingPromo(true);
+    const { error } = await supabase.from('promotions').insert({
+      venue_id: id,
+      title: newPromoTitle.trim(),
+      description: newPromoDescription.trim() || null,
+    });
+    if (error) {
+      alert('Error al agregar promoción');
+    } else {
+      setNewPromoTitle('');
+      setNewPromoDescription('');
+      setShowPromoForm(false);
+      fetchPromotions();
+    }
+    setAddingPromo(false);
+  };
+
+  const handleDeletePromo = async (promoId) => {
+    if (!confirm('¿Eliminar esta promoción?')) return;
+    const { error } = await supabase.from('promotions').delete().eq('id', promoId);
+    if (!error) setPromotions(promotions.filter((p) => p.id !== promoId));
+  };
 
   const handlePhotoChange = (e) => {
     const newFiles = [...e.target.files];
@@ -87,7 +123,6 @@ export default function EditVenue() {
     URL.revokeObjectURL(photoPreviews[index]);
     setPhotos((prev) => prev.filter((_, i) => i !== index));
     setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
-    // Si la foto eliminada era la principal, limpiar selección
     if (primaryPhoto === `new-${index}`) setPrimaryPhoto(null);
   };
 
@@ -101,27 +136,18 @@ export default function EditVenue() {
       .eq('id', id);
     if (error) return alert('Error al actualizar');
 
-    // ✅ Actualizar is_primary en fotos existentes
     for (const photo of existingPhotos) {
       const isPrimary = primaryPhoto === `existing-${photo.id}`;
-      await supabase
-        .from('venue_photos')
-        .update({ is_primary: isPrimary })
-        .eq('id', photo.id);
+      await supabase.from('venue_photos').update({ is_primary: isPrimary }).eq('id', photo.id);
     }
 
-    // ✅ Subir fotos nuevas con is_primary correcto
     for (let i = 0; i < photos.length; i++) {
       const file = photos[i];
       const fileName = `${id}/${Date.now()}_${file.name}`;
       const isPrimary = primaryPhoto === `new-${i}`;
-      const { error: uploadError } = await supabase.storage
-        .from('venue-photos')
-        .upload(fileName, file);
+      const { error: uploadError } = await supabase.storage.from('venue-photos').upload(fileName, file);
       if (!uploadError) {
-        await supabase
-          .from('venue_photos')
-          .insert({ venue_id: id, photo_url: fileName, is_primary: isPrimary });
+        await supabase.from('venue_photos').insert({ venue_id: id, photo_url: fileName, is_primary: isPrimary });
       }
     }
 
@@ -184,14 +210,102 @@ export default function EditVenue() {
       {latitude && longitude && (
         <MapPicker
           location={{ lat: latitude, lng: longitude }}
-          onLocationChange={(lat, lng) => {
-            setLatitude(lat);
-            setLongitude(lng);
-          }}
+          onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
           onAddressChange={(addr) => setAddress(addr)}
         />
       )}
 
+      {/* ✅ SECCIÓN PROMOCIONES */}
+      <div className="border border-[#222] rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between p-4 bg-[#111]">
+          <div className="flex items-center space-x-2">
+            <Tag className="w-5 h-5 text-[#ff0080]" />
+            <span className="font-semibold">Promociones</span>
+            {promotions.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">
+                {promotions.length}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowPromoForm(!showPromoForm)}
+            className="flex items-center space-x-1 text-sm text-[#ff0080] hover:text-[#ff40a0] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Agregar</span>
+          </button>
+        </div>
+
+        {/* Formulario nueva promo */}
+        {showPromoForm && (
+          <div className="p-4 border-t border-[#222] bg-[#0a0a0a] space-y-3">
+            <input
+              type="text"
+              value={newPromoTitle}
+              onChange={(e) => setNewPromoTitle(e.target.value)}
+              placeholder="Título de la promoción *"
+              className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080] text-sm"
+            />
+            <textarea
+              value={newPromoDescription}
+              onChange={(e) => setNewPromoDescription(e.target.value)}
+              rows={2}
+              placeholder="Descripción (opcional)"
+              className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080] text-sm resize-none"
+            />
+            <div className="flex space-x-2">
+              <button
+                onClick={handleAddPromo}
+                disabled={addingPromo}
+                className="flex-1 py-2 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors text-sm font-semibold disabled:opacity-50"
+              >
+                {addingPromo ? 'Guardando...' : 'Guardar promoción'}
+              </button>
+              <button
+                onClick={() => { setShowPromoForm(false); setNewPromoTitle(''); setNewPromoDescription(''); }}
+                className="px-4 py-2 rounded-lg bg-[#222] hover:bg-[#333] transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de promos existentes */}
+        {promotions.length > 0 && (
+          <div className="divide-y divide-[#222]">
+            {promotions.map((promo) => (
+              <div key={promo.id} className="flex items-start justify-between p-4 bg-[#0a0a0a]">
+                <div className="flex items-start space-x-3">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Tag className="w-3 h-3 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium text-sm">{promo.title}</p>
+                    {promo.description && (
+                      <p className="text-gray-400 text-xs mt-0.5">{promo.description}</p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeletePromo(promo.id)}
+                  className="p-1.5 rounded-full hover:bg-red-600/20 text-gray-500 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {promotions.length === 0 && !showPromoForm && (
+          <p className="text-sm text-gray-500 p-4 text-center bg-[#0a0a0a]">
+            Sin promociones activas. Toca "Agregar" para crear una.
+          </p>
+        )}
+      </div>
+
+      {/* FOTOS */}
       <div>
         <label className="block mb-2 font-semibold">Fotos existentes</label>
         <div className="flex flex-wrap gap-2">
@@ -199,42 +313,18 @@ export default function EditVenue() {
             <p className="text-sm text-gray-500">Sin fotos guardadas</p>
           )}
           {existingPhotos.map((photo) => {
-            const url = supabase.storage
-              .from('venue-photos')
-              .getPublicUrl(photo.photo_url).data.publicUrl;
+            const url = supabase.storage.from('venue-photos').getPublicUrl(photo.photo_url).data.publicUrl;
             const isPrimary = primaryPhoto === `existing-${photo.id}`;
             return (
               <div key={photo.id} className="relative w-24 h-24">
-                <img
-                  src={url}
-                  className={`w-24 h-24 object-cover rounded-lg transition-all ${
-                    isPrimary ? 'ring-2 ring-yellow-400' : ''
-                  }`}
-                  alt="foto existente"
-                />
-                {/* Badge principal */}
+                <img src={url} className={`w-24 h-24 object-cover rounded-lg transition-all ${isPrimary ? 'ring-2 ring-yellow-400' : ''}`} alt="foto existente" />
                 {isPrimary && (
-                  <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-yellow-400/90 text-black font-bold rounded-b-lg py-0.5">
-                    Principal
-                  </span>
+                  <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] bg-yellow-400/90 text-black font-bold rounded-b-lg py-0.5">Principal</span>
                 )}
-                {/* Botón corona */}
-                <button
-                  onClick={() => setPrimaryPhoto(`existing-${photo.id}`)}
-                  className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${
-                    isPrimary
-                      ? 'bg-yellow-400 text-black'
-                      : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'
-                  }`}
-                  title="Marcar como principal"
-                >
+                <button onClick={() => setPrimaryPhoto(`existing-${photo.id}`)} className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'}`}>
                   <Crown className="w-3 h-3" />
                 </button>
-                {/* Botón eliminar */}
-                <button
-                  onClick={() => handleDeletePhoto(photo.id)}
-                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
-                >
+                <button onClick={() => handleDeletePhoto(photo.id)} className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors">
                   <Trash2 className="w-3 h-3 text-white" />
                 </button>
               </div>
@@ -248,36 +338,14 @@ export default function EditVenue() {
             const isPrimary = primaryPhoto === `new-${index}`;
             return (
               <div key={index} className="relative w-24 h-24">
-                <img
-                  src={previewUrl}
-                  className={`w-24 h-24 object-cover rounded-lg opacity-90 transition-all ${
-                    isPrimary ? 'ring-2 ring-yellow-400' : 'border border-[#ff0080]'
-                  }`}
-                  alt={`nueva foto ${index + 1}`}
-                />
-                {/* Badge */}
-                <span className={`absolute bottom-0 left-0 right-0 text-center text-[10px] rounded-b-lg py-0.5 font-bold ${
-                  isPrimary ? 'bg-yellow-400/90 text-black' : 'bg-[#ff0080]/80 text-white'
-                }`}>
+                <img src={previewUrl} className={`w-24 h-24 object-cover rounded-lg opacity-90 transition-all ${isPrimary ? 'ring-2 ring-yellow-400' : 'border border-[#ff0080]'}`} alt={`nueva foto ${index + 1}`} />
+                <span className={`absolute bottom-0 left-0 right-0 text-center text-[10px] rounded-b-lg py-0.5 font-bold ${isPrimary ? 'bg-yellow-400/90 text-black' : 'bg-[#ff0080]/80 text-white'}`}>
                   {isPrimary ? 'Principal' : 'Nueva'}
                 </span>
-                {/* Botón corona */}
-                <button
-                  onClick={() => setPrimaryPhoto(`new-${index}`)}
-                  className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${
-                    isPrimary
-                      ? 'bg-yellow-400 text-black'
-                      : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'
-                  }`}
-                  title="Marcar como principal"
-                >
+                <button onClick={() => setPrimaryPhoto(`new-${index}`)} className={`absolute top-1 left-1 p-1 rounded-full transition-colors ${isPrimary ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white hover:bg-yellow-400 hover:text-black'}`}>
                   <Crown className="w-3 h-3" />
                 </button>
-                {/* Botón eliminar */}
-                <button
-                  onClick={() => handleRemoveNewPhoto(index)}
-                  className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors"
-                >
+                <button onClick={() => handleRemoveNewPhoto(index)} className="absolute top-1 right-1 p-1 bg-black/70 rounded-full hover:bg-red-600 transition-colors">
                   <X className="w-3 h-3 text-white" />
                 </button>
               </div>
@@ -286,17 +354,10 @@ export default function EditVenue() {
 
           <label className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-[#222] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
             <Plus className="w-6 h-6 text-white" />
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhotoChange}
-            />
+            <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoChange} />
           </label>
         </div>
 
-        {/* ✅ Indicador si no hay principal seleccionada */}
         {!primaryPhoto && (existingPhotos.length > 0 || photos.length > 0) && (
           <p className="text-xs text-yellow-500 mt-2">
             👑 Ninguna foto marcada como principal. Toca la corona para elegir una.

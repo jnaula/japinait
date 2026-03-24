@@ -5,6 +5,7 @@ import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit, C
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import {tag} from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -28,6 +29,7 @@ const darkMapStyle = [
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
   { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] },
 ];
+
 
 const DAYS_TRANSLATION = {
   monday: 'Lunes',
@@ -122,7 +124,8 @@ export default function VenueDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-
+  const [promotions, setPromotions] = useState([]);
+const [showPromotions, setShowPromotions] = useState(false);
   const [venue, setVenue] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [photos, setPhotos] = useState([]);
@@ -140,10 +143,14 @@ export default function VenueDetail() {
 
   const touchStartX = useRef(null);
   const lightboxTouchStartX = useRef(null);
+  
 
-  useEffect(() => {
+   useEffect(() => {
+    
     fetchVenueDetails();
-  }, [id]);
+
+  },
+   [id]);
 
   useEffect(() => {
     if (user) {
@@ -190,6 +197,13 @@ export default function VenueDetail() {
         .single();
       if (venueError) throw venueError;
       setVenue(venueData);
+
+          const { data: promoData } = await supabase
+  .from('promotions')
+  .select('*')
+  .eq('venue_id', id)
+  .order('created_at', { ascending: false });
+setPromotions(promoData || []);
 
       const { data: photosData, error: photosError } = await supabase
         .from('venue_photos')
@@ -478,6 +492,22 @@ export default function VenueDetail() {
             </div>
           )}
 
+          {promotions.length > 0 && (
+  <motion.button
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => setShowPromotions(true)}
+    className="flex items-center space-x-2 mb-6 px-5 py-3 rounded-xl bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border border-[#ff0080]/30 text-white hover:border-[#ff0080]/60 transition-all"
+  >
+    <Tag className="w-5 h-5 text-[#ff0080]" />
+    <span className="font-semibold">Ver promociones</span>
+    <span className="ml-1 px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">
+      {promotions.length}
+    </span>
+  </motion.button>
+)}
+
+
           <div className="grid md:grid-cols-2 gap-4 mb-8">
             <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
             {venue.price_range && (
@@ -655,6 +685,68 @@ export default function VenueDetail() {
 
         </motion.div>
       </div>
+
+      {/* MODAL PROMOCIONES */}
+<AnimatePresence>
+  {showPromotions && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={() => setShowPromotions(false)}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', damping: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-[#1a1a1a]">
+          <div className="flex items-center space-x-2">
+            <Tag className="w-5 h-5 text-[#ff0080]" />
+            <h3 className="text-white font-bold text-lg">Promociones</h3>
+          </div>
+          <button
+            onClick={() => setShowPromotions(false)}
+            className="p-2 rounded-full hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Lista de promos */}
+        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          {promotions.map((promo, i) => (
+            <motion.div
+              key={promo.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="p-4 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a]"
+            >
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0">
+                  <Tag className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold mb-1">{promo.title}</p>
+                  {promo.description && (
+                    <p className="text-gray-400 text-sm">{promo.description}</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
 
       {/* LIGHTBOX */}
       <AnimatePresence>
