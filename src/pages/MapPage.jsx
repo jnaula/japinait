@@ -142,8 +142,8 @@ export default function MapPage() {
       const processed = data.map((v) => {
         const primaryPhoto = v.venue_photos?.find((p) => p.is_primary);
         const photoPath = primaryPhoto?.photo_url || v.venue_photos?.[0]?.photo_url;
-        const primaryImageUrl = venue.primary_photo
-          ? supabase.storage.from('venue-photos').getPublicUrl(venue.primary_photo).data.publicUrl
+        const primaryImageUrl = photoPath
+          ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
           : null;
         return {
           ...v,
@@ -384,7 +384,6 @@ export default function MapPage() {
             </div>
           )}
         </div>
-     
     </div>
   );
 }
