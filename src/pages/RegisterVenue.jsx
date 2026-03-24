@@ -250,6 +250,18 @@ export default function RegisterVenue() {
               onAddressChange={handleAddressChange}
             />
           </div>
+
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
+              <Building2 className="w-4 h-4 text-[#ff0080]" />
+              <span>Descripción</span>
+            </label>
+            <textarea
+              name="description" value={formData.description} onChange={handleChange} rows={4}
+              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] resize-none"
+              placeholder="Describe tu local..."
+            />
+          </div>
            
           {/* ✅ SECCIÓN PROMOCIONES */}
           <div className="border border-[#2a2a2a] rounded-xl overflow-hidden">
@@ -309,17 +321,6 @@ export default function RegisterVenue() {
               </div>
             )}
             
-            <div>
-            <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
-              <Building2 className="w-4 h-4 text-[#ff0080]" />
-              <span>Descripción</span>
-            </label>
-            <textarea
-              name="description" value={formData.description} onChange={handleChange} rows={4}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] resize-none"
-              placeholder="Describe tu local..."
-            />
-          </div>
 
             {/* Lista de promos agregadas */}
             {promotions.length > 0 && (
