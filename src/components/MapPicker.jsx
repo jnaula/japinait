@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Loader2, LocateFixed } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -203,14 +203,14 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
       )}
 
       <div className="w-full h-64 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden">
-        <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+        
           <MapContent
             center={center}
             flyTo={flyTo}
             onLocationChange={handleLocationChange}
             onAddressChange={onAddressChange}
           />
-        </APIProvider>
+        
       </div>
       <div className="text-xs text-gray-500">
         Haz clic en el mapa o arrastra el marcador para ajustar la ubicación.

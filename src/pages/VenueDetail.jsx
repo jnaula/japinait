@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -527,7 +527,7 @@ export default function VenueDetail() {
               </a>
             </div>
             <div className="w-full h-64 rounded-lg overflow-hidden">
-              <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+              
                 <Map
                   defaultZoom={14}
                   defaultCenter={{
@@ -550,7 +550,7 @@ export default function VenueDetail() {
                     onUserLocation={setUserLocation}
                   />
                 </Map>
-              </APIProvider>
+              
             </div>
             <p className="text-xs text-gray-500 mt-2 text-center">
               Pin rosa → tu ubicación · Pin morado → el local

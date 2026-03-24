@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
+import { Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Trash2, Plus, X } from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
@@ -206,7 +206,7 @@ export default function EditVenue() {
 
       {latitude && longitude && (
         <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
-         
+          
             <Map
               defaultZoom={15}
               defaultCenter={{ lat: latitude, lng: longitude }}
@@ -233,7 +233,7 @@ export default function EditVenue() {
                 <div className="w-6 h-6 bg-[#ff0080] rounded-full border-2 border-white" />
               </AdvancedMarker>
             </Map>
-         
+          
         </div>
       )}
 

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Filter, Search, Clock, Loader2, LocateFixed } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
-import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { Map, AdvancedMarker, Pin, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -171,7 +171,7 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+     
         <div className="max-w-7xl mx-auto px-4 py-8">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -384,7 +384,7 @@ export default function MapPage() {
             </div>
           )}
         </div>
-      </APIProvider>
+     
     </div>
   );
 }
