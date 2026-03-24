@@ -142,8 +142,8 @@ export default function MapPage() {
       const processed = data.map((v) => {
         const primaryPhoto = v.venue_photos?.find((p) => p.is_primary);
         const photoPath = primaryPhoto?.photo_url || v.venue_photos?.[0]?.photo_url;
-        const primaryImageUrl = photoPath
-          ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
+        const imageUrl = venue.primary_photo
+          ? supabase.storage.from('venue-photos').getPublicUrl(venue.primary_photo).data.publicUrl
           : null;
         return {
           ...v,
