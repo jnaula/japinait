@@ -251,6 +251,64 @@ export default function RegisterVenue() {
             />
           </div>
 
+          {/* ✅ SECCIÓN PROMOCIONES */}
+          <div className="border border-[#2a2a2a] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 bg-[#1a1a1a]">
+              <div className="flex items-center space-x-2">
+                <Tag className="w-4 h-4 text-[#ff0080]" />
+                <span className="text-sm font-medium text-gray-300">Promociones</span>
+                {promotions.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">
+                    {promotions.length}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPromoForm(!showPromoForm)}
+                className="flex items-center space-x-1 text-sm text-[#ff0080] hover:text-[#ff40a0] transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Agregar</span>
+              </button>
+            </div>
+
+            {/* Formulario nueva promo */}
+            {showPromoForm && (
+              <div className="p-4 border-t border-[#2a2a2a] bg-[#0f0f0f] space-y-3">
+                <input
+                  type="text"
+                  value={newPromoTitle}
+                  onChange={(e) => setNewPromoTitle(e.target.value)}
+                  placeholder="Título de la promoción *"
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm"
+                />
+                <textarea
+                  value={newPromoDescription}
+                  onChange={(e) => setNewPromoDescription(e.target.value)}
+                  rows={2}
+                  placeholder="Descripción (opcional)"
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm resize-none"
+                />
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={handleAddPromo}
+                    className="flex-1 py-2 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors text-sm font-semibold"
+                  >
+                    Agregar promoción
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowPromoForm(false); setNewPromoTitle(''); setNewPromoDescription(''); }}
+                    className="px-4 py-2 rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors text-sm text-gray-300"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
           <div className="grid md:grid-cols-3 gap-6">
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
@@ -331,63 +389,7 @@ export default function RegisterVenue() {
             onChange={(val) => setFormData(prev => ({ ...prev, opening_hours: val }))}
           />
 
-          {/* ✅ SECCIÓN PROMOCIONES */}
-          <div className="border border-[#2a2a2a] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 bg-[#1a1a1a]">
-              <div className="flex items-center space-x-2">
-                <Tag className="w-4 h-4 text-[#ff0080]" />
-                <span className="text-sm font-medium text-gray-300">Promociones</span>
-                {promotions.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">
-                    {promotions.length}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPromoForm(!showPromoForm)}
-                className="flex items-center space-x-1 text-sm text-[#ff0080] hover:text-[#ff40a0] transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Agregar</span>
-              </button>
-            </div>
-
-            {/* Formulario nueva promo */}
-            {showPromoForm && (
-              <div className="p-4 border-t border-[#2a2a2a] bg-[#0f0f0f] space-y-3">
-                <input
-                  type="text"
-                  value={newPromoTitle}
-                  onChange={(e) => setNewPromoTitle(e.target.value)}
-                  placeholder="Título de la promoción *"
-                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm"
-                />
-                <textarea
-                  value={newPromoDescription}
-                  onChange={(e) => setNewPromoDescription(e.target.value)}
-                  rows={2}
-                  placeholder="Descripción (opcional)"
-                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm resize-none"
-                />
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={handleAddPromo}
-                    className="flex-1 py-2 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors text-sm font-semibold"
-                  >
-                    Agregar promoción
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowPromoForm(false); setNewPromoTitle(''); setNewPromoDescription(''); }}
-                    className="px-4 py-2 rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors text-sm text-gray-300"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
+          
 
             {/* Lista de promos agregadas */}
             {promotions.length > 0 && (
