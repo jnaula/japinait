@@ -11,7 +11,6 @@ const DAYS = [
   { key: 'sunday', label: 'Domingo' },
 ];
 
-// Horas disponibles en formato 24h cada 30 minutos
 const HOURS = Array.from({ length: 48 }, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
   const m = i % 2 === 0 ? '00' : '30';
@@ -26,27 +25,16 @@ export default function OpeningHoursEditor({ value, onChange }) {
 
   const handleToggle = (day) => {
     if (isOpen(day)) {
-      // Apagar → marcar como cerrado borrando open y close
-      onChange({
-        ...value,
-        [day]: { open: null, close: null },
-      });
+      onChange({ ...value, [day]: { open: null, close: null } });
     } else {
-      // Encender → poner horario por defecto
-      onChange({
-        ...value,
-        [day]: { open: '18:00', close: '02:00' },
-      });
+      onChange({ ...value, [day]: { open: '18:00', close: '02:00' } });
     }
   };
 
   const handleChange = (day, field, val) => {
     onChange({
       ...value,
-      [day]: {
-        ...value[day],
-        [field]: val,
-      },
+      [day]: { ...value[day], [field]: val },
     });
   };
 
@@ -63,60 +51,73 @@ export default function OpeningHoursEditor({ value, onChange }) {
           return (
             <div
               key={key}
-              className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                open ? 'bg-[#1a1a1a]' : 'bg-[#111]'
-              }`}
+              className={`px-4 py-3 transition-colors ${open ? 'bg-[#1a1a1a]' : 'bg-[#111]'}`}
             >
-              {/* Nombre del día */}
-              <span className="text-sm font-medium text-gray-300 w-24 flex-shrink-0">
-                {label}
-              </span>
-
-              {/* Toggle */}
-              <button
-                type="button"
-                onClick={() => handleToggle(key)}
-                className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${
-                  open ? 'bg-[#ff0080]' : 'bg-[#333]'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    open ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-
-              {open ? (
-                // Selectores de hora
-                <div className="flex items-center gap-2 flex-1">
-                  <select
-                    value={value[key]?.open || '18:00'}
-                    onChange={(e) => handleChange(key, 'open', e.target.value)}
-                    className="flex-1 px-2 py-1.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-sm focus:border-[#ff0080] outline-none"
-                  >
-                    {HOURS.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-
-                  <span className="text-gray-500 text-xs flex-shrink-0">hasta</span>
-
-                  <select
-                    value={value[key]?.close || '02:00'}
-                    onChange={(e) => handleChange(key, 'close', e.target.value)}
-                    className="flex-1 px-2 py-1.5 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-sm focus:border-[#ff0080] outline-none"
-                  >
-                    {HOURS.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                // Estado cerrado
-                <span className="text-xs font-medium text-red-500/70 bg-red-500/10 px-3 py-1 rounded-full">
-                  Cerrado
+              {/* Fila superior: nombre + toggle */}
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-sm font-semibold ${open ? 'text-white' : 'text-gray-500'}`}>
+                  {label}
                 </span>
+                <div className="flex items-center gap-2">
+                  {!open && (
+                    <span className="text-xs font-medium text-red-500/70 bg-red-500/10 px-2.5 py-0.5 rounded-full">
+                      Cerrado
+                    </span>
+                  )}
+                  {open && (
+                    <span className="text-xs font-medium text-green-400/70 bg-green-400/10 px-2.5 py-0.5 rounded-full">
+                      Abierto
+                    </span>
+                  )}
+                  {/* Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(key)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      open ? 'bg-[#ff0080]' : 'bg-[#333]'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${
+                        open ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Fila inferior: selectores de hora (solo si está abierto) */}
+              {open && (
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-500 uppercase tracking-wide pl-1">
+                      Abre
+                    </span>
+                    <select
+                      value={value[key]?.open || '18:00'}
+                      onChange={(e) => handleChange(key, 'open', e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-sm focus:border-[#ff0080] outline-none transition-colors"
+                    >
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-500 uppercase tracking-wide pl-1">
+                      Cierra
+                    </span>
+                    <select
+                      value={value[key]?.close || '02:00'}
+                      onChange={(e) => handleChange(key, 'close', e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg text-white text-sm focus:border-[#ff0080] outline-none transition-colors"
+                    >
+                      {HOURS.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               )}
             </div>
           );
