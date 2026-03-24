@@ -735,7 +735,7 @@ setPromotions(promoData || []);
                 <div>
                   <p className="text-white font-semibold mb-1">{promo.title}</p>
                   {promo.description && (
-                    <p className="text-gray-400 text-sm">{promo.description}</p>
+                    <p className="text-gray-400 text-sm whitespace-pre-line">{promo.description}</p>
                   )}
                 </div>
               </div>
