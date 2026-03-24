@@ -206,7 +206,7 @@ export default function EditVenue() {
 
       {latitude && longitude && (
         <div className="w-full h-64 rounded-lg overflow-hidden border border-[#222]">
-          <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+          
             <Map
               defaultZoom={15}
               defaultCenter={{ lat: latitude, lng: longitude }}
