@@ -140,10 +140,13 @@ const [showPromotions, setShowPromotions] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [showHours, setShowHours] = useState(false);
 
   const touchStartX = useRef(null);
   const lightboxTouchStartX = useRef(null);
-  
+   
+   useEffect(()=>{window.scrollTo({top: 0, behavior: 'instant'});
+  }, [id]);
 
    useEffect(() => {
     
@@ -558,33 +561,32 @@ setPromotions(promoData || []);
           <div className="grid md:grid-cols-2 gap-4 mb-8">
             <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
             {venue.price_range && (
-              <InfoCard icon={DollarSign} label="Rango de Precios" value={venue.price_range} />
-            )}
+              <InfoCard 
+              icon={DollarSign} 
+              label="Rango de Precios"
+              value={{
+                '$': 'Economico ($)',
+                '$$': 'Medio ($$)',
+                '$$$': 'Alto ($$$)',
+              }[venue.price_range] || venue.price_range}
+              />
+              )}
+
             {venue.music_type && (
               <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />
             )}
             {hasHours && (
-              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
-                <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
-                <div className="w-full">
-                  <p className="text-gray-500 text-sm mb-2">Horario de Atención</p>
-                  <div className="space-y-1">
-                    {DAYS_ORDER.map((dayKey) => {
-                      const hours = openingHours[dayKey];
-                      if (!hours?.open || !hours?.close) return null;
-                      return (
-                        <div key={dayKey} className="flex justify-between text-sm">
-                          <span className="text-gray-400 w-24">{DAYS_TRANSLATION[dayKey]}:</span>
-                          <span className="text-white font-medium">
-                            {hours.open} - {hours.close}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+  <button
+    onClick={() => setShowHours(true)}
+    className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors w-full text-left"
+  >
+    <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
+    <div>
+      <p className="text-gray-500 text-sm">Horario de Atención</p>
+      <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
+    </div>
+  </button>
+)}
           </div>
 
           
@@ -821,7 +823,63 @@ setPromotions(promoData || []);
           </motion.div>
         )}
       </AnimatePresence>
+      {/* MODAL HORARIOS */}
+<AnimatePresence>
+  {showHours && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      onClick={() => setShowHours(false)}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', damping: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-[#1a1a1a]">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-5 h-5 text-[#ff0080]" />
+            <h3 className="text-white font-bold text-lg">Horarios</h3>
+          </div>
+          <button
+            onClick={() => setShowHours(false)}
+            className="p-2 rounded-full hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
+        {/* Lista de días */}
+        <div className="p-4 space-y-2">
+          {DAYS_ORDER.map((dayKey, i) => {
+            const hours = openingHours[dayKey];
+            if (!hours?.open || !hours?.close) return null;
+            return (
+              <motion.div
+                key={dayKey}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="flex items-center justify-between py-2 px-3 rounded-lg bg-[#1a1a1a]"
+              >
+                <span className="text-gray-400 text-sm w-24">{DAYS_TRANSLATION[dayKey]}</span>
+                <span className="text-white font-medium text-sm">
+                  {hours.open} - {hours.close}
+                </span>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
     </div>
   );
 }
