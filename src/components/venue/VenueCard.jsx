@@ -11,8 +11,11 @@ export default function VenueCard({ venue }) {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  const imageUrl = venue.primary_photo ||
-  null;
+  const imageUrl = venue.primary_photo
+  ? venue.primary_photo.startsWith('http')
+    ? venue.primary_photo  // ya es URL completa, usarla directamente
+    : supabase.storage.from('venue-photos').getPublicUrl(venue.primary_photo).data.publicUrl // es un path, convertir
+  : null;
 
   useEffect(() => {
     if (user) {
