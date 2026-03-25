@@ -110,7 +110,7 @@ export default function Login() {
             >
               <img src={logo}
                    alt="JapiNait"
-                   classname="w-24 h-24 object-contain mx-auto rounded-full"
+                   classname="w-24 h-24 object-contain mx-auto rounded-full p-[2px] bg-gradient-to-tr from-[#ff0080] to-[#7928ca]"
               />
               
           </motion.div>
