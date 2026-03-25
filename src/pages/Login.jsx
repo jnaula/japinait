@@ -108,11 +108,12 @@ export default function Login() {
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
               className="mb-4"
             >
+              <div classname="w-24 h-24 rounded-full  overflow-hidden border-2 border-[#ff0080]">
               <img src={logo}
                    alt="JapiNait"
-                   classname="w-24 h-24 object-contain mx-auto rounded-full p-[2px] bg-gradient-to-tr from-[#ff0080] to-[#7928ca]"
+                   classname="w.full h.full object-cover"
               />
-              
+              </div>
           </motion.div>
             <h2 className="text-3xl font-bold text-white mb-2">Bienvenido de Vuelta</h2>
             <p className="text-gray-400">Inicia sesión para descubrir la vida nocturna de Ecuador</p>
