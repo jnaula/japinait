@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -105,10 +105,15 @@ export default function Login() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] mb-4"
+              className="mb-4"
             >
+              <img src="/src/assets/logo.jpeg"
+                   alt="JapiNait"
+                   classname="w-24 h-24 object-contain mx-auto"
+              />
+              
               <LogIn className="w-8 h-8 text-white" />
-            </motion.div>
+          </motion.div>
             <h2 className="text-3xl font-bold text-white mb-2">Bienvenido de Vuelta</h2>
             <p className="text-gray-400">Inicia sesión para descubrir la vida nocturna de Ecuador</p>
           </div>
