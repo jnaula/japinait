@@ -243,7 +243,36 @@ export default function Home() {
               )}
             </div>
           </motion.div>
+ 
         )}
+        {/* Footer */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-center py-6 mt-8 border-t border-[#1a1a1a]"
+        >
+          <p className="text-gray-600 text-xs mb-2">© 2025 JapiNait · Todos los derechos reservados</p>
+          <div className="flex items-center justify-center space-x-4">
+            
+              <a href="https://zippy-squid-771.notion.site/T-rminos-y-condiciones-JapiNait-32d1a5c981e3808b8677db339c805b62"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-[#ff0080] text-xs transition-colors"
+            >
+              Términos y Condiciones
+            </a>
+            <span className="text-gray-700">·</span>
+            
+              <a href="https://zippy-squid-771.notion.site/Pol-ticas-de-privacidad-JapiNait-32d1a5c981e38020ba2cebac2bf14240"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-[#ff0080] text-xs transition-colors"
+            >
+              Política de Privacidad
+            </a>
+          </div>
+        </motion.div>           
       </div>
     </div>
   );
