@@ -112,7 +112,6 @@ export default function Login() {
                    classname="w-24 h-24 object-contain mx-auto"
               />
               
-              <LogIn className="w-8 h-8 text-white" />
           </motion.div>
             <h2 className="text-3xl font-bold text-white mb-2">Bienvenido de Vuelta</h2>
             <p className="text-gray-400">Inicia sesión para descubrir la vida nocturna de Ecuador</p>
