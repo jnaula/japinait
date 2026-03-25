@@ -15,7 +15,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { signUp, user } = useAuth(); // signInWithGoogle removed or needs to be added
   const navigate = useNavigate();
-
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   React.useEffect(() => {
     if (user) {
       navigate('/home');
@@ -26,6 +26,11 @@ export default function Register() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+     if (!acceptedTerms) {
+      setError('Debes aceptar los teminos y condiciones para continuar');
+      setLoading(false);
+     }
 
     if (password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres');
@@ -217,14 +222,52 @@ export default function Register() {
               </div>
             </div>
 
+           <div className="flex items-start space-x-3 p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+  <button
+    type="button"
+    onClick={() => setAcceptedTerms(!acceptedTerms)}
+    className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border-2 transition-colors flex items-center justify-center ${
+      acceptedTerms
+        ? 'bg-[#ff0080] border-[#ff0080]'
+        : 'border-gray-500 hover:border-[#ff0080]'
+    }`}
+  >
+    {acceptedTerms && (
+      <span className="text-white text-xs font-bold leading-none">✓</span>
+    )}
+  </button>
+  <p className="text-sm text-gray-400 leading-relaxed">
+    Acepto los{' '}
+    
+      <a href="https://tu-sitio.com/terminos"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[#ff0080] hover:text-[#ff0080]/80 font-medium underline underline-offset-2"
+     >
+      Términos y Condiciones
+    </a>
+    {' '}y la{' '}
+    
+      <a href="https://tu-sitio.com/privacidad"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[#ff0080] hover:text-[#ff0080]/80 font-medium underline underline-offset-2"
+    >
+      Política de Privacidad
+    </a>
+  </p>
+</div>
+
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
               className="w-full py-3 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-            >
+             >
               {loading ? (
+                
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Creando cuenta...</span>
