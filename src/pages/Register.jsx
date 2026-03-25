@@ -263,7 +263,7 @@ export default function Register() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={loading || acceptedTerms}
+              disabled={loading || !acceptedTerms}
               className="w-full py-3 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
              >
               {loading ? (
