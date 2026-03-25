@@ -252,7 +252,7 @@ export default function Home() {
           transition={{ delay: 0.3 }}
           className="text-center py-6 mt-8 border-t border-[#1a1a1a]"
         >
-          <p className="text-gray-600 text-xs mb-2">© 2025 JapiNait · Todos los derechos reservados</p>
+          <p className="text-gray-600 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
           <div className="flex items-center justify-center space-x-4">
             
               <a href="https://zippy-squid-771.notion.site/T-rminos-y-condiciones-JapiNait-32d1a5c981e3808b8677db339c805b62"
