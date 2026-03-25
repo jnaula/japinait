@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import logo from '/src/assets/logo.jpeg';
 import {
   Dialog,
   DialogContent,
@@ -102,12 +103,12 @@ export default function Login() {
         <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-8 shadow-2xl">
           <div className="text-center mb-8">
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
               className="mb-4"
             >
-              <img src="/src/assets/logo.jpeg"
+              <img src={logo}
                    alt="JapiNait"
                    classname="w-24 h-24 object-contain mx-auto"
               />
