@@ -239,7 +239,7 @@ export default function Register() {
   <p className="text-sm text-gray-400 leading-relaxed">
     Acepto los{' '}
     
-      <a href="https://www.notion.so/T-rminos-y-condiciones-JapiNait-32d1a5c981e3808b8677db339c805b62"
+      <a href="https://zippy-squid-771.notion.site/T-rminos-y-condiciones-JapiNait-32d1a5c981e3808b8677db339c805b62"
       target="_blank"
       rel="noopener noreferrer"
       className="text-[#ff0080] hover:text-[#ff0080]/80 font-medium underline underline-offset-2"
@@ -248,7 +248,7 @@ export default function Register() {
     </a>
     {' '}y la{' '}
     
-      <a href="https://www.notion.so/Pol-ticas-de-privacidad-JapiNait-32d1a5c981e38020ba2cebac2bf14240"
+      <a href="https://zippy-squid-771.notion.site/Pol-ticas-de-privacidad-JapiNait-32d1a5c981e38020ba2cebac2bf14240"
       target="_blank"
       rel="noopener noreferrer"
       className="text-[#ff0080] hover:text-[#ff0080]/80 font-medium underline underline-offset-2"
