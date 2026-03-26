@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import logo from '/src/assets/logo.jpeg';
+import logo from '/src/assets/logof.jpeg';
 import {
   Dialog,
   DialogContent,
