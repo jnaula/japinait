@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import logo from '/src/assets/login.jpeg';
+import logo from '/src/assets/logo.jpeg';
 import {
   Dialog,
   DialogContent,
@@ -108,7 +108,7 @@ export default function Login() {
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
               className="mb-4"
             >
-              <div classname="w-16 h-16 rounded-full  overflow-hidden border-2 border-[#ff0080]">
+              <div classname="w-13 h-13 rounded-full  overflow-hidden border-2 border-[#ff0080]">
               <img src={logo}
                    alt="JapiNait"
                    classname="w.full h.full object-cover"
