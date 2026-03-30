@@ -108,7 +108,7 @@ export default function Login() {
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
               className="mb-4"
             >
-              <div classname="w-4 h-4 rounded-full  overflow-hidden border-2 border-[#ff0080]">
+              <div classname="w-2 h-2 rounded-full  overflow-hidden border-2 border-[#ff0080]">
               <img src={logo}
                    alt="JapiNait"
                    classname="w.full h.full object-cover"
