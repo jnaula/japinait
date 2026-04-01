@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, Search, MapPin, Clock, Star } from 'lucide-react';
+import { Filter, Search, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
 
@@ -13,21 +13,17 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('recent');
 
   useEffect(() => {
-    console.log('Home: Component mounted');
     fetchVenueTypes();
     fetchVenues();
   }, []);
 
   const fetchVenueTypes = async () => {
     try {
-      console.log('Home: Fetching venue types...');
       const { data, error } = await supabase
         .from('venue_types')
         .select('*')
         .order('name');
-
       if (error) throw error;
-      console.log('Home: Venue types fetched:', data);
       setVenueTypes(data || []);
     } catch (err) {
       console.error('Home: Error fetching venue types:', err);
@@ -37,35 +33,26 @@ export default function Home() {
   const fetchVenues = async () => {
     setLoading(true);
     try {
-      console.log('Home: Fetching venues...');
       const { data, error } = await supabase
         .from('venues')
-        .select(`
-          *,
-          venue_types(name),
-          venue_photos(photo_url, is_primary)
-        `)
+        .select(`*, venue_types(name), venue_photos(photo_url, is_primary)`)
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
 
       const processedVenues = data.map((venue) => {
-  const primaryPhoto = venue.venue_photos?.find((p) => p.is_primary);
-  const photoPath = primaryPhoto?.photo_url || venue.venue_photos?.[0]?.photo_url;
+        const primaryPhoto = venue.venue_photos?.find((p) => p.is_primary);
+        const photoPath = primaryPhoto?.photo_url || venue.venue_photos?.[0]?.photo_url;
+        const imageUrl = photoPath
+          ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
+          : null;
+        return {
+          ...venue,
+          venue_type_name: venue.venue_types?.name,
+          primary_photo: imageUrl,
+        };
+      });
 
-  const imageUrl = photoPath
-    ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
-    : null;
-
-  return {
-    ...venue,
-    venue_type_name: venue.venue_types?.name,
-    primary_photo: imageUrl, // 🔥 ahora SI es URL
-  };
-});
-
-      console.log('Home: Venues fetched:', processedVenues.length);
       setVenues(processedVenues);
     } catch (err) {
       console.error('Home: Error fetching venues:', err);
@@ -77,7 +64,8 @@ export default function Home() {
   const getFilteredAndSortedVenues = () => {
     let filtered = venues.filter((venue) => {
       const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
-      const matchesSearch = venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch =
+        venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         venue.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesType && matchesSearch;
@@ -97,96 +85,73 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="max-w-7xl mx-auto px-4 py-8">
+
+        {/* Título */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Explora <span className="bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-transparent bg-clip-text">Todos los Locales</span>
+            Explora{' '}
+            <span className="bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-transparent bg-clip-text">
+              Todos los Locales
+            </span>
           </h1>
           <p className="text-gray-400 text-lg">Navega por todos los locales registrados en Ecuador</p>
         </motion.div>
 
-        <div className="mb-8 space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-6"
-          >
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-3">
-                  <Search className="w-5 h-5 text-[#ff0080]" />
-                  <h2 className="text-lg font-semibold text-white">Buscar Locales</h2>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre, dirección o descripción..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors"
-                />
-              </div>
-
-              {/*<div className="md:w-48">
-                <div className="flex items-center space-x-3 mb-3">
-                  <Clock className="w-5 h-5 text-[#ff0080]" />
-                  <h2 className="text-lg font-semibold text-white">Ordenar Por</h2>
-                </div>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors"
-                >
-                  <option value="recent">Más Recientes</option>
-                  <option value="name">Nombre (A-Z)</option>
-                </select>
-                </div>
-                */}
-                 </div>
-               </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-6"
-          >
-            <div className="flex items-center space-x-3 mb-4">
-              <Filter className="w-5 h-5 text-[#ff0080]" />
-              <h2 className="text-lg font-semibold text-white">Filtrar por Tipo</h2>
+        {/* ✅ Búsqueda y filtro en una sola fila */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 mb-8"
+        >
+          <div className="flex gap-3">
+            {/* Búsqueda */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Buscar locales..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors text-sm"
+              />
             </div>
-            <div>
-  <select
-    value={selectedType}
-    onChange={(e) => setSelectedType(e.target.value)}
-    className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors"
-  >
-    <option value="all">
-      Todos ({venues.length})
-    </option>
 
-    {venueTypes.map((type) => {
-      const count = venues.filter(v => v.venue_type_id === type.id).length;
+            {/* Filtro */}
+            <div className="relative w-36">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full pl-9 pr-2 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors text-sm appearance-none"
+              >
+                <option value="all">Todos ({venues.length})</option>
+                {venueTypes.map((type) => {
+                  const count = venues.filter((v) => v.venue_type_id === type.id).length;
+                  return (
+                    <option key={type.id} value={type.id}>
+                      {type.name} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+        </motion.div>
 
-      return (
-        <option key={type.id} value={type.id}>
-          {type.name} ({count})
-        </option>
-      );
-    })}
-  </select>
-</div>
-          </motion.div>
-        </div>
-
+        {/* Contador */}
         <div className="mb-4">
           <p className="text-gray-400 text-sm">
-            Mostrando <span className="text-white font-semibold">{filteredVenues.length}</span> {filteredVenues.length === 1 ? 'local' : 'locales'}
+            Mostrando{' '}
+            <span className="text-white font-semibold">{filteredVenues.length}</span>{' '}
+            {filteredVenues.length === 1 ? 'local' : 'locales'}
           </p>
         </div>
 
+        {/* Lista de locales */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -243,8 +208,8 @@ export default function Home() {
               )}
             </div>
           </motion.div>
- 
         )}
+
         {/* Footer */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -272,25 +237,9 @@ export default function Home() {
               Política de Privacidad
             </a>
           </div>
-        </motion.div>           
+        </motion.div>
+
       </div>
     </div>
-  );
-}
-
-function FilterButton({ active, onClick, children }) {
-  return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-        active
-          ? 'bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white'
-          : 'bg-[#1a1a1a] text-gray-300 hover:bg-[#2a2a2a]'
-      }`}
-    >
-      {children}
-    </motion.button>
   );
 }
