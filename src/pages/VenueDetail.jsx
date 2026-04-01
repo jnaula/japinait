@@ -5,7 +5,7 @@ import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit, C
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import {Ticket} from 'lucide-react';
+import {Tag} from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -502,7 +502,7 @@ setPromotions(promoData || []);
     onClick={() => setShowPromotions(true)}
     className="flex items-center space-x-2 mb-6 px-5 py-3 rounded-xl bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border border-[#ff0080]/30 text-white hover:border-[#ff0080]/60 transition-all"
   >
-    <Ticket className="w-5 h-5 text-[#ff0080]" />
+    <Tag className="w-5 h-5 text-[#ff0080]" />
     <span className="font-semibold">Ver promociones</span>
     <span className="ml-1 px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">
       {promotions.length}
