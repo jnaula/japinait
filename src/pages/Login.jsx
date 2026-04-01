@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 import logo from '/src/assets/login.jpeg';
 import {
   Dialog,
@@ -18,44 +17,34 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [userType, setUserType] = useState('user');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, resetPassword, updatePasswordForEmail, user } = useAuth(); // signInWithGoogle removed or needs to be added to context export
+  const { signIn, resetPassword, user } = useAuth();
   const navigate = useNavigate();
 
-  // Forgot Password State
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
-  const [resetStep, setResetStep] = useState(1); // 1: Email, 2: New Password
+  const [resetStep, setResetStep] = useState(1);
   const [newPassword, setNewPassword] = useState('');
 
   React.useEffect(() => {
-    if (user) {
-      navigate('/home');
-    }
+    if (user) navigate('/home');
   }, [user, navigate]);
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setResetError('');
     setResetLoading(true);
-
     try {
-      if (resetStep === 1) {
-        // Verify email exists
-        const { error } = await resetPassword(resetEmail);
-        
-        if (error) {
-          setResetError('No encontramos una cuenta con ese correo electrónico.');
-        } else {
-          setResetStep(3); // Go directly to success/check email
-        }
-      } 
-      // Step 2 is removed/skipped as we don't ask for password here anymore
-    } catch (err) {
+      const { error } = await resetPassword(resetEmail);
+      if (error) {
+        setResetError('No encontramos una cuenta con ese correo electrónico.');
+      } else {
+        setResetStep(3);
+      }
+    } catch {
       setResetError('Ocurrió un error inesperado');
     } finally {
       setResetLoading(false);
@@ -66,27 +55,20 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const { data, error: signInError } = await signIn({ email, password });
-
       if (signInError) {
-        console.error('Login error:', signInError);
         setError(signInError.message || 'Error al iniciar sesión');
         setLoading(false);
         return;
       }
-
-      // Check role from user_metadata (Supabase Auth) or role property (legacy/custom)
       const userRole = data?.user?.user_metadata?.role || data?.user?.role;
-      
       if (userRole === 'venue_admin') {
         navigate('/dashboard');
       } else {
         navigate('/home');
       }
-    } catch (err) {
-      console.error('Login: Exception:', err);
+    } catch {
       setError('An unexpected error occurred');
       setLoading(false);
     }
@@ -101,22 +83,25 @@ export default function Login() {
         className="w-full max-w-md"
       >
         <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
+
+          {/* ✅ Logo compacto y estético */}
+          <div className="flex flex-col items-center mb-8">
             <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="mb-4"
+              className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#ff0080]/40 shadow-lg shadow-[#ff0080]/10 mb-4"
             >
-              <div classname="w-2 h-2 rounded-full  overflow-hidden border-2 border-[#ff0080]">
-              <img src={logo}
-                   alt="JapiNait"
-                   classname="w.full h.full object-cover"
+              <img
+                src={logo}
+                alt="JapiNait"
+                className="w-full h-full object-cover"
               />
-              </div>
-          </motion.div>
-            <h2 className="text-3xl font-bold text-white mb-2">Bienvenido de Vuelta</h2>
-            <p className="text-gray-400">Inicia sesión para descubrir la vida nocturna de Ecuador</p>
+            </motion.div>
+            <h2 className="text-3xl font-bold text-white mb-1">Bienvenido de Vuelta</h2>
+            <p className="text-gray-400 text-sm text-center">
+              Inicia sesión para descubrir la vida nocturna de Ecuador
+            </p>
           </div>
 
           {error && (
@@ -131,36 +116,6 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/*<div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
-                Tipo de Usuario
-              </label>
-              <div className="space-y-3">
-                <label className="flex items-center p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
-                  <input
-                    type="radio"
-                    name="userType"
-                    value="user"
-                    checked={userType === 'user'}
-                    onChange={(e) => setUserType(e.target.value)}
-                    className="w-4 h-4 text-[#ff0080] focus:ring-[#ff0080] focus:ring-offset-0"
-                  />
-                  <span className="ml-3 text-white">Usuario - Explorar la vida nocturna</span>
-                </label>
-                <label className="flex items-center p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg cursor-pointer hover:border-[#ff0080] transition-colors">
-                  <input
-                    type="radio"
-                    name="userType"
-                    value="owner"
-                    checked={userType === 'owner'}
-                    onChange={(e) => setUserType(e.target.value)}
-                    className="w-4 h-4 text-[#ff0080] focus:ring-[#ff0080] focus:ring-offset-0"
-                  />
-                  <span className="ml-3 text-white">Administrador de Local - Gestionar locales</span>
-                </label>
-              </div>
-            </div>
-            */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                 Correo Electrónico
@@ -184,7 +139,6 @@ export default function Login() {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                   Contraseña
                 </label>
-                
                 <Dialog open={isResetOpen} onOpenChange={(open) => {
                   setIsResetOpen(open);
                   if (!open) {
@@ -195,7 +149,7 @@ export default function Login() {
                   }
                 }}>
                   <DialogTrigger asChild>
-                    <button 
+                    <button
                       type="button"
                       className="text-xs text-[#ff0080] hover:underline focus:outline-none"
                     >
@@ -210,7 +164,6 @@ export default function Login() {
                         {resetStep === 3 && "Revisa tu correo electrónico."}
                       </DialogDescription>
                     </DialogHeader>
-                    
                     {resetStep === 3 ? (
                       <div className="py-6 flex flex-col items-center text-center">
                         <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
@@ -235,7 +188,6 @@ export default function Login() {
                             <p className="text-red-500 text-xs">{resetError}</p>
                           </div>
                         )}
-                        
                         <div>
                           <label htmlFor="reset-email" className="block text-sm font-medium text-gray-300 mb-2">
                             Correo Electrónico
@@ -253,7 +205,6 @@ export default function Login() {
                             />
                           </div>
                         </div>
-                        
                         <div className="flex justify-end pt-2">
                           <button
                             type="submit"
