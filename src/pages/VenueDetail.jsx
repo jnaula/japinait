@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Send, Edit, ChevronLeft, ChevronRight, X, Tag } from 'lucide-react';
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import {Tag} from 'lucide-react';
+
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
