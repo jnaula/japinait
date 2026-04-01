@@ -90,7 +90,7 @@ export default function Login() {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-[#ff0080]/40 shadow-lg shadow-[#ff0080]/10 mb-4"
+              className="w-30 h-30 rounded-2xl overflow-hidden border-2 border-[#ff0080]/40 shadow-lg shadow-[#ff0080]/10 mb-4"
             >
               <img
                 src={logo}
