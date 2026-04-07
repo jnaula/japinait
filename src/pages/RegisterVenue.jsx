@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { Building2, MapPin, Phone, Mail, Share2, DollarSign, Music, Tag, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import PhotoUpload from '../components/venue/PhotoUpload';
 import OpeningHoursEditor from '../components/venue/OpeningHoursEditor';
 import MapPicker from '../components/MapPicker';
 
 export default function RegisterVenue() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [venueTypes, setVenueTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState([]);
@@ -109,7 +111,7 @@ export default function RegisterVenue() {
     e.preventDefault();
     if (!user) {
       alert('Debes iniciar sesión para registrar un local');
-      window.location.href = '/login';
+      navigate('/login');
       return;
     }
 
@@ -168,7 +170,7 @@ export default function RegisterVenue() {
       }
 
       alert('Local registrado exitosamente.');
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
     } catch (err) {
       console.error('RegisterVenue: Error:', err);
       alert('Error al registrar el local: ' + err.message);

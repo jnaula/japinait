@@ -35,19 +35,7 @@ async function reverseGeocode(lat, lng) {
   return null;
 }
 
-async function geolocateByNetwork() {
-  const url = `https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_MAPS_API_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ considerIp: true }),
-  });
-  const data = await res.json();
-  if (data.location) {
-    return { lat: data.location.lat, lng: data.location.lng };
-  }
-  return null;
-}
+
 
 function MapContent({ center, flyTo, onLocationChange, onAddressChange }) {
   const map = useMap();
@@ -119,47 +107,33 @@ export default function MapPicker({ location, onLocationChange, onAddressChange 
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState(null);
 
-  const handleLocateMe = async () => {
-    setGeoError(null);
-    setLocating(true);
+  const handleLocateMe = () => {
+  setGeoError(null);
+  setLocating(true);
 
-    const tryNativeGeo = () =>
-      new Promise((resolve) => {
-        if (!navigator.geolocation) return resolve(null);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
-      });
+  if (!navigator.geolocation) {
+    setGeoError('Tu dispositivo no soporta geolocalización.');
+    setLocating(false);
+    return;
+  }
 
-    const tryNetworkGeo = async () => {
-      try {
-        return await geolocateByNetwork();
-      } catch {
-        return null;
-      }
-    };
-
-    try {
-      let coords = await tryNativeGeo();
-      if (!coords) coords = await tryNetworkGeo();
-
-      if (coords) {
-        setCenter(coords);
-        setFlyTo({ ...coords, _t: Date.now() }); // _t fuerza re-render si coords son iguales
-        onLocationChange(coords.lat, coords.lng);
-        const address = await reverseGeocode(coords.lat, coords.lng);
-        if (address) onAddressChange(address);
-      } else {
-        setGeoError('No se pudo detectar la ubicación. Selecciónala manualmente.');
-      }
-    } catch {
-      setGeoError('Error al obtener la ubicación.');
-    } finally {
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setCenter(coords);
+      setFlyTo({ ...coords, _t: Date.now() });
+      onLocationChange(coords.lat, coords.lng);
+      const address = await reverseGeocode(coords.lat, coords.lng);
+      if (address) onAddressChange(address);
       setLocating(false);
-    }
-  };
+    },
+    () => {
+      setGeoError('Activa el GPS y los permisos de ubicación. Selecciónala manualmente.');
+      setLocating(false);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+};
 
   useEffect(() => {
     handleLocateMe();

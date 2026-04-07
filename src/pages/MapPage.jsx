@@ -29,19 +29,7 @@ const darkMapStyle = [
   { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
 ];
 
-async function geolocateByNetwork() {
-  const res = await fetch(`
-    https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_MAPS_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ considerIp: true }),
-    }
-  );
-  const data = await res.json();
-  if (data.location) return { lat: data.location.lat, lng: data.location.lng };
-  return null;
-}
+
 
 const DEFAULT_CENTER = { lat: -0.1807, lng: -78.4678 };
 
@@ -79,36 +67,29 @@ export default function MapPage() {
   }, []);
 
   const detectLocation = async () => {
-    setLocating(true);
-    setGeoError(null);
+  setLocating(true);
+  setGeoError(null);
 
-    const tryNativeGeo = () =>
-      new Promise((resolve) => {
-        if (!navigator.geolocation) return resolve(null);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
-      });
+  if (!navigator.geolocation) {
+    setGeoError('Tu dispositivo no soporta geolocalización.');
+    setLocating(false);
+    return;
+  }
 
-    try {
-      let coords = await tryNativeGeo();
-      if (!coords) coords = await geolocateByNetwork();
-
-      if (coords) {
-        setUserLocation(coords);
-        // Centrar el mapa via ref sin tocar zoom/center controlados
-        if (panToRef.current) panToRef.current(coords);
-      } else {
-        setGeoError('No se pudo detectar la ubicación.');
-      }
-    } catch {
-      setGeoError('Error al obtener la ubicación.');
-    } finally {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setUserLocation(coords);
+      if (panToRef.current) panToRef.current(coords);
       setLocating(false);
-    }
-  };
+    },
+    () => {
+      setGeoError('Activa el GPS y los permisos de ubicación para ver tu posición.');
+      setLocating(false);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+};
 
   const getTodayHours = (openingHours) => {
     if (!openingHours) return null;
