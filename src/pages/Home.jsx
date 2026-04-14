@@ -1,8 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, Search, MapPin } from 'lucide-react';
+import { Search, MapPin, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
+
+// ——— Banner data (puedes editar estos o traerlos de Supabase luego) ———
+const BANNERS = [
+  {
+    id: 1,
+    title: 'Disfruta livias',
+    highlight: 'noches',
+    subtitle: 'aseyradas',
+    description: '¡Conoce aquí los mejores clubes de Guayaquil!',
+    cta: '¡Descúbrelos!',
+    bg: 'from-[#1a0533] via-[#2d0a5e] to-[#0a0a1a]',
+    accent: '#ff0080',
+    city: 'Guayaquil',
+  },
+  {
+    id: 2,
+    title: 'Las mejores',
+    highlight: 'noches',
+    subtitle: 'de Quito',
+    description: '¡Descubre los bares y discotecas más exclusivos!',
+    cta: '¡Explóralos!',
+    bg: 'from-[#0a1a33] via-[#0a2d5e] to-[#0a0a1a]',
+    accent: '#7928ca',
+    city: 'Quito',
+  },
+];
+
+// ——— Recomendado por secciones ———
+const CURATORS = [
+  { id: 'djs', label: 'DJs locales', emoji: '🎧' },
+  { id: 'influencers', label: 'Influencers', emoji: '📸' },
+  { id: 'staff', label: 'Staff JapiNait', emoji: '🔥' },
+];
 
 export default function Home() {
   const [venues, setVenues] = useState([]);
@@ -10,19 +43,23 @@ export default function Home() {
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('recent');
+  const [activeBanner, setActiveBanner] = useState(0);
+  const [activeCurator, setActiveCurator] = useState('staff');
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     fetchVenueTypes();
     fetchVenues();
+    // Auto-rotate banners
+    const timer = setInterval(() => {
+      setActiveBanner((prev) => (prev + 1) % BANNERS.length);
+    }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const fetchVenueTypes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('venue_types')
-        .select('*')
-        .order('name');
+      const { data, error } = await supabase.from('venue_types').select('*').order('name');
       if (error) throw error;
       setVenueTypes(data || []);
     } catch (err) {
@@ -53,7 +90,9 @@ export default function Home() {
         };
       });
 
-      setVenues(processedVenues);
+      // Orden aleatorio cada vez que se abre la app
+      const shuffled = [...processedVenues].sort(() => Math.random() - 0.5);
+      setVenues(shuffled);
     } catch (err) {
       console.error('Home: Error fetching venues:', err);
     } finally {
@@ -61,185 +100,319 @@ export default function Home() {
     }
   };
 
-  const getFilteredAndSortedVenues = () => {
-    let filtered = venues.filter((venue) => {
-      const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
-      const matchesSearch =
-        venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        venue.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesType && matchesSearch;
-    });
+  const filteredVenues = venues.filter((venue) => {
+    const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
+    const matchesSearch =
+      venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      venue.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesType && matchesSearch;
+  });
 
-    if (sortBy === 'name') {
-      filtered.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'recent') {
-      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    }
+  // Simula secciones "Recomendado por" — en el futuro puedes agregar un campo curator en Supabase
+  const popularVenues = venues.filter((_, i) => i % 3 === 0).slice(0, 6);
+  const newVenues = venues.slice(0, 6);
+  const recommendedVenues = venues.filter((_, i) => i % 2 === 0).slice(0, 6);
 
-    return filtered;
+  const getCuratorVenues = () => {
+    if (activeCurator === 'djs') return popularVenues;
+    if (activeCurator === 'influencers') return newVenues;
+    return recommendedVenues;
   };
 
-  const filteredVenues = getFilteredAndSortedVenues();
+  const banner = BANNERS[activeBanner];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[#0a0a0a] pb-10">
+      <div className="max-w-2xl mx-auto px-4 pt-6">
 
-        {/* Título */}
+        {/* ——— HEADER ——— */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="mb-6"
         >
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-3xl font-extrabold text-white leading-tight">
             Explora{' '}
-            <span className="bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-transparent bg-clip-text">
-              Todos los Locales
-            </span>
+            <span className="text-[#ff0080]">locales</span>{' '}
+            <span>🔥</span>
           </h1>
-          <p className="text-gray-400 text-lg">Navega por todos los locales registrados en Ecuador</p>
-        </motion.div>
-
-        {/* ✅ Búsqueda y filtro en una sola fila */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 mb-8"
-        >
-          <div className="flex gap-3">
-            {/* Búsqueda */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Buscar locales..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors text-sm"
-              />
-            </div>
-
-            {/* Filtro */}
-            <div className="relative w-36">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full pl-9 pr-2 py-2.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080] transition-colors text-sm appearance-none"
-              >
-                <option value="all">Todos ({venues.length})</option>
-                {venueTypes.map((type) => {
-                  const count = venues.filter((v) => v.venue_type_id === type.id).length;
-                  return (
-                    <option key={type.id} value={type.id}>
-                      {type.name} ({count})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Contador */}
-        <div className="mb-4">
-          <p className="text-gray-400 text-sm">
-            Mostrando{' '}
-            <span className="text-white font-semibold">{filteredVenues.length}</span>{' '}
-            {filteredVenues.length === 1 ? 'local' : 'locales'}
+          <p className="text-gray-500 text-sm mt-1">
+            Buscar locales que pro
+            <span className="text-[#7928ca] font-semibold">kuentate</span>{' '}
+            còño menos
           </p>
-        </div>
+        </motion.div>
 
-        {/* Lista de locales */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="w-16 h-16 border-4 border-[#ff0080] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-400">Cargando locales...</p>
-            </div>
-          </div>
-        ) : filteredVenues.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        {/* ——— SEARCH ——— */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="relative mb-5"
+        >
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Buscar locales..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-[#161616] border border-[#222] rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-[#ff0080] transition-colors text-sm"
+          />
+        </motion.div>
+
+        {/* ——— FILTROS PILL ——— */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15 }}
+          className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          <PillFilter
+            active={selectedType === 'all'}
+            onClick={() => setSelectedType('all')}
           >
-            {filteredVenues.map((venue, index) => (
-              <motion.div
-                key={venue.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <VenueCard venue={venue} />
-              </motion.div>
-            ))}
-          </motion.div>
-        ) : (
+            Todos
+          </PillFilter>
+          {venueTypes.map((type) => (
+            <PillFilter
+              key={type.id}
+              active={selectedType === type.id}
+              onClick={() => setSelectedType(type.id)}
+            >
+              {type.name}
+            </PillFilter>
+          ))}
+        </motion.div>
+
+        {/* ——— BANNER ——— */}
+        {!searchQuery && selectedType === 'all' && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20"
+            key={banner.id}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className={`relative rounded-2xl overflow-hidden mb-8 bg-gradient-to-r ${banner.bg} p-5`}
+            style={{ minHeight: '140px' }}
           >
-            <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-12 max-w-md mx-auto">
-              <div className="w-16 h-16 bg-[#1a1a1a] rounded-full flex items-center justify-center mx-auto mb-4">
-                <MapPin className="w-8 h-8 text-gray-500" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">No se Encontraron Locales</h3>
-              <p className="text-gray-400 mb-4">
-                {searchQuery || selectedType !== 'all'
-                  ? 'Intenta ajustar tu búsqueda o filtros'
-                  : 'Aún no se han registrado locales'}
-              </p>
-              {(searchQuery || selectedType !== 'all') && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSelectedType('all');
+            {/* Decorative glow */}
+            <div
+              className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-20 blur-2xl"
+              style={{ background: banner.accent }}
+            />
+            <div className="relative z-10">
+              <p className="text-white/80 text-sm font-medium italic">{banner.title}</p>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span
+                  className="text-3xl font-black italic"
+                  style={{
+                    background: `linear-gradient(90deg, #fff 0%, ${banner.accent} 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
                   }}
-                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white font-medium"
                 >
-                  Limpiar Filtros
-                </motion.button>
-              )}
+                  {banner.highlight}
+                </span>
+                <span className="text-[#7928ca] font-bold text-xl">{banner.subtitle}</span>
+              </div>
+              <p className="text-gray-300 text-xs mt-1 mb-3">{banner.description}</p>
+              <button
+                className="px-4 py-1.5 rounded-full text-sm font-bold text-black"
+                style={{ background: banner.accent === '#ff0080' ? '#f5c518' : banner.accent }}
+              >
+                {banner.cta}
+              </button>
+            </div>
+
+            {/* Dots */}
+            <div className="absolute bottom-3 right-4 flex gap-1">
+              {BANNERS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveBanner(i)}
+                  className="rounded-full transition-all"
+                  style={{
+                    width: i === activeBanner ? 16 : 6,
+                    height: 6,
+                    background: i === activeBanner ? banner.accent : '#ffffff40',
+                  }}
+                />
+              ))}
             </div>
           </motion.div>
         )}
 
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center py-6 mt-8 border-t border-[#1a1a1a]"
-        >
-          <p className="text-gray-600 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
-          <div className="flex items-center justify-center space-x-4">
-            
-              <a href="https://zippy-squid-771.notion.site/T-rminos-y-condiciones-JapiNait-32d1a5c981e3808b8677db339c805b62"
+        {/* ——— SECCIÓN: RECOMENDADO POR ——— */}
+        {!searchQuery && selectedType === 'all' && (
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-white font-bold text-lg">Recomendado por...</h2>
+              <button className="flex items-center gap-1 text-[#ff0080] text-xs font-semibold">
+                Ver todos <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Curator tabs */}
+            <div className="flex gap-2 mb-4">
+              {CURATORS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCurator(c.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    activeCurator === c.id
+                      ? 'bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white'
+                      : 'bg-[#161616] text-gray-400 border border-[#222]'
+                  }`}
+                >
+                  <span>{c.emoji}</span>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Horizontal scroll cards */}
+            <div
+              ref={scrollRef}
+              className="flex gap-4 overflow-x-auto pb-2"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {loading
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex-shrink-0 w-44 h-56 rounded-2xl bg-[#161616] animate-pulse"
+                    />
+                  ))
+                : getCuratorVenues().map((venue, i) => (
+                    <motion.div
+                      key={venue.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex-shrink-0 w-44"
+                    >
+                      <VenueCard venue={venue} compact />
+                    </motion.div>
+                  ))}
+            </div>
+          </section>
+        )}
+
+        {/* ——— SECCIÓN: POPULARES ——— */}
+        {!searchQuery && selectedType === 'all' && (
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-white font-bold text-lg">
+                Populares <span className="text-[#ff0080]">populares</span>
+              </h2>
+              <button className="flex items-center gap-1 text-[#ff0080] text-xs font-semibold">
+                Ver todos <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {loading
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-52 rounded-2xl bg-[#161616] animate-pulse" />
+                  ))
+                : venues.slice(0, 4).map((venue, i) => (
+                    <motion.div
+                      key={venue.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.06 }}
+                    >
+                      <VenueCard venue={venue} />
+                    </motion.div>
+                  ))}
+            </div>
+          </section>
+        )}
+
+        {/* ——— LISTA FILTRADA (cuando hay búsqueda o filtro activo) ——— */}
+        {(searchQuery || selectedType !== 'all') && (
+          <section>
+            <p className="text-gray-500 text-sm mb-4">
+              Mostrando{' '}
+              <span className="text-white font-semibold">{filteredVenues.length}</span>{' '}
+              {filteredVenues.length === 1 ? 'local' : 'locales'}
+            </p>
+            {loading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-10 h-10 border-4 border-[#ff0080] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : filteredVenues.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {filteredVenues.map((venue, i) => (
+                  <motion.div
+                    key={venue.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                  >
+                    <VenueCard venue={venue} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-14 h-14 bg-[#161616] rounded-full flex items-center justify-center mx-auto mb-3">
+                  <MapPin className="w-6 h-6 text-gray-600" />
+                </div>
+                <p className="text-white font-semibold mb-1">Sin resultados</p>
+                <p className="text-gray-500 text-sm mb-4">Intenta con otros filtros</p>
+                <button
+                  onClick={() => { setSearchQuery(''); setSelectedType('all'); }}
+                  className="px-5 py-2 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-semibold"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ——— FOOTER ——— */}
+        <div className="text-center pt-8 mt-4 border-t border-[#1a1a1a]">
+          <p className="text-gray-700 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
+          <div className="flex items-center justify-center gap-4">
+            <a
+              href="https://zippy-squid-771.notion.site/T-rminos-y-condiciones-JapiNait-32d1a5c981e3808b8677db339c805b62"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-[#ff0080] text-xs transition-colors"
+              className="text-gray-600 hover:text-[#ff0080] text-xs transition-colors"
             >
               Términos y Condiciones
             </a>
             <span className="text-gray-700">·</span>
-            
-              <a href="https://zippy-squid-771.notion.site/Pol-ticas-de-privacidad-JapiNait-32d1a5c981e38020ba2cebac2bf14240"
+            <a
+              href="https://zippy-squid-771.notion.site/Pol-ticas-de-privacidad-JapiNait-32d1a5c981e38020ba2cebac2bf14240"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-[#ff0080] text-xs transition-colors"
+              className="text-gray-600 hover:text-[#ff0080] text-xs transition-colors"
             >
               Política de Privacidad
             </a>
           </div>
-        </motion.div>
+        </div>
 
       </div>
     </div>
+  );
+}
+
+// ——— Pill filter button ———
+function PillFilter({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+        active
+          ? 'bg-white text-black'
+          : 'bg-[#161616] text-gray-400 border border-[#222] hover:border-[#ff0080] hover:text-white'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

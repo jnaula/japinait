@@ -5,83 +5,119 @@ import { MapPin, Star, Heart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 
-export default function VenueCard({ venue }) {
+export default function VenueCard({ venue, compact = false }) {
   const [isFavorite, setIsFavorite] = useState(false);
-  const [favoriteId, setFavoriteId] = useState(null);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
   const imageUrl = venue.primary_photo
-  ? venue.primary_photo.startsWith('http')
-    ? venue.primary_photo  // ya es URL completa, usarla directamente
-    : supabase.storage.from('venue-photos').getPublicUrl(venue.primary_photo).data.publicUrl // es un path, convertir
-  : null;
+    ? venue.primary_photo.startsWith('http')
+      ? venue.primary_photo
+      : supabase.storage.from('venue-photos').getPublicUrl(venue.primary_photo).data.publicUrl
+    : null;
 
   useEffect(() => {
-    if (user) {
-      checkFavorite();
-    }
+    if (user) checkFavorite();
   }, [user, venue.id]);
 
   const checkFavorite = async () => {
     try {
       const { data, error } = await supabase
-        .from('favorites')
+        .from('user_favorites')
         .select('id')
         .eq('user_id', user.id)
         .eq('venue_id', venue.id)
         .single();
-
-      if (data && !error) {
-        setIsFavorite(true);
-        setFavoriteId(data.id);
-      }
-    } catch (err) {
-      console.log('VenueCard: No favorite found');
+      if (data && !error) setIsFavorite(true);
+    } catch {
+      // no favorite found
     }
   };
 
-const toggleFavorite = async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  if (!user) {
-    alert('Por favor inicia sesión para agregar favoritos');
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    if (isFavorite) {
-      const { error } = await supabase
-        .from('user_favorites')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('venue_id', venue.id);
-
-      if (!error) {
-        setIsFavorite(false);
-      }
-    } else {
-      const { error } = await supabase
-        .from('user_favorites')
-        .insert({
-          user_id: user.id,
-          venue_id: venue.id,
-        });
-
-      if (!error) {
-        setIsFavorite(true);
-      }
+  const toggleFavorite = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      alert('Por favor inicia sesión para agregar favoritos');
+      return;
     }
-  } catch (err) {
-    console.error('VenueCard: Error toggling favorite:', err);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('venue_id', venue.id);
+        if (!error) setIsFavorite(false);
+      } else {
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({ user_id: user.id, venue_id: venue.id });
+        if (!error) setIsFavorite(true);
+      }
+    } catch (err) {
+      console.error('VenueCard: Error toggling favorite:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // ——— COMPACT MODE (para scroll horizontal en Home) ———
+  if (compact) {
+    return (
+      <Link to={`/venue/${venue.id}`}>
+        <motion.div
+          whileHover={{ y: -3 }}
+          className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden hover:border-[#ff0080] transition-colors group"
+        >
+          {/* Imagen */}
+          <div className="relative h-32 bg-[#1a1a1a] overflow-hidden">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={venue.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff0080]/20 to-[#7928ca]/20">
+                <MapPin className="w-8 h-8 text-[#ff0080]/40" />
+              </div>
+            )}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleFavorite}
+              disabled={loading}
+              className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm"
+            >
+              <Heart
+                className={`w-3.5 h-3.5 ${isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'}`}
+              />
+            </motion.button>
+          </div>
+
+          {/* Info */}
+          <div className="p-3">
+            <h3 className="text-white font-bold text-sm leading-tight line-clamp-1 group-hover:text-[#ff0080] transition-colors">
+              {venue.name}
+            </h3>
+            <div className="flex items-center justify-between mt-1.5">
+              {venue.venue_type_name && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#7928ca]/20 text-[#7928ca] border border-[#7928ca]/30">
+                  {venue.venue_type_name}
+                </span>
+              )}
+              {venue.price_range && (
+                <span className="text-[10px] text-gray-500">{venue.price_range}</span>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </Link>
+    );
+  }
+
+  // ——— DEFAULT MODE ———
   return (
     <Link to={`/venue/${venue.id}`}>
       <motion.div
@@ -89,7 +125,7 @@ const toggleFavorite = async (e) => {
         className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl overflow-hidden hover:border-[#ff0080] transition-colors group"
       >
         <div className="relative h-48 bg-[#1a1a1a] overflow-hidden">
-          {venue.primary_photo ? (
+          {imageUrl ? (
             <img
               src={imageUrl}
               alt={venue.name}
@@ -108,9 +144,7 @@ const toggleFavorite = async (e) => {
             className="absolute top-3 right-3 p-2 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition-colors"
           >
             <Heart
-              className={`w-5 h-5 ${
-                isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'
-              }`}
+              className={`w-5 h-5 ${isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'}`}
             />
           </motion.button>
         </div>
@@ -121,9 +155,7 @@ const toggleFavorite = async (e) => {
           </h3>
 
           {venue.description && (
-            <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-              {venue.description}
-            </p>
+            <p className="text-gray-400 text-sm mb-3 line-clamp-2">{venue.description}</p>
           )}
 
           <div className="flex items-center justify-between">
@@ -131,19 +163,15 @@ const toggleFavorite = async (e) => {
               {venue.average_rating > 0 && (
                 <div className="flex items-center space-x-1">
                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                  <span className="text-sm text-gray-300">
-                    {venue.average_rating.toFixed(1)}
-                  </span>
+                  <span className="text-sm text-gray-300">{venue.average_rating.toFixed(1)}</span>
                 </div>
               )}
-
               {venue.venue_type_name && (
                 <span className="text-xs px-2 py-1 rounded-full bg-[#7928ca]/20 text-[#7928ca] border border-[#7928ca]/30">
                   {venue.venue_type_name}
                 </span>
               )}
             </div>
-
             {venue.price_range && (
               <span className="text-sm text-gray-400">{venue.price_range}</span>
             )}
