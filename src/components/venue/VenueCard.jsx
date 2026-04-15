@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Star, Heart } from 'lucide-react';
+import { MapPin, Star, Heart, Phone } from 'lucide-react'; // ✅ Phone agregado
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 
@@ -63,7 +63,9 @@ export default function VenueCard({ venue, compact = false }) {
     }
   };
 
-  // ——— COMPACT MODE (para scroll horizontal en Home) ———
+  // ════════════════════════════════════════════════════════
+  // COMPACT MODE — scroll horizontal en Home
+  // ════════════════════════════════════════════════════════
   if (compact) {
     return (
       <Link to={`/venue/${venue.id}`}>
@@ -111,19 +113,29 @@ export default function VenueCard({ venue, compact = false }) {
                 <span className="text-[10px] text-gray-500">{venue.price_range}</span>
               )}
             </div>
+            {/* Teléfono en modo compact — solo si existe, versión muy compacta */}
+            {venue.phone && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <Phone className="w-3 h-3 text-[#ff0080]/70 flex-shrink-0" />
+                <span className="text-[10px] text-gray-500 truncate">{venue.phone}</span>
+              </div>
+            )}
           </div>
         </motion.div>
       </Link>
     );
   }
 
-  // ——— DEFAULT MODE ———
+  // ════════════════════════════════════════════════════════
+  // DEFAULT MODE — grid principal
+  // ════════════════════════════════════════════════════════
   return (
     <Link to={`/venue/${venue.id}`}>
       <motion.div
         whileHover={{ y: -5 }}
         className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl overflow-hidden hover:border-[#ff0080] transition-colors group"
       >
+        {/* Imagen */}
         <div className="relative h-48 bg-[#1a1a1a] overflow-hidden">
           {imageUrl ? (
             <img
@@ -149,6 +161,7 @@ export default function VenueCard({ venue, compact = false }) {
           </motion.button>
         </div>
 
+        {/* Contenido */}
         <div className="p-5">
           <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#ff0080] transition-colors">
             {venue.name}
@@ -158,6 +171,7 @@ export default function VenueCard({ venue, compact = false }) {
             <p className="text-gray-400 text-sm mb-3 line-clamp-2">{venue.description}</p>
           )}
 
+          {/* Rating + tipo + precio */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               {venue.average_rating > 0 && (
@@ -177,10 +191,19 @@ export default function VenueCard({ venue, compact = false }) {
             )}
           </div>
 
+          {/* Dirección */}
           <div className="flex items-center space-x-1 text-gray-500 text-sm mt-3">
-            <MapPin className="w-4 h-4" />
+            <MapPin className="w-4 h-4 flex-shrink-0" />
             <span className="line-clamp-1">{venue.address}</span>
           </div>
+
+          {/* ✅ TELÉFONO — solo se muestra si existe el campo phone */}
+          {venue.phone && (
+            <div className="flex items-center space-x-1 text-gray-500 text-sm mt-1.5">
+              <Phone className="w-4 h-4 flex-shrink-0 text-[#ff0080]/70" />
+              <span>{venue.phone}</span>
+            </div>
+          )}
         </div>
       </motion.div>
     </Link>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { APIProvider } from '@vis.gl/react-google-maps'; // ✅ Agregar este import
+import { APIProvider } from '@vis.gl/react-google-maps';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
 import MapPage from './pages/MapPage';
@@ -16,10 +16,11 @@ import Events from './pages/Events';
 import Favorites from './pages/Favorites';
 import AdminPanel from './pages/AdminPanel';
 import Stats from './pages/Stats';
+import AdminProfile from './pages/AdminProfile'; // ✅ NUEVO: perfil del administrador
 import ProtectedRoute from './components/ProtectedRoute';
 import EditVenue from './pages/EditVenue';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI'; // ✅ La key aquí
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
 export default function App() {
   const { loading } = useAuth();
@@ -33,34 +34,41 @@ export default function App() {
   }
 
   return (
-    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}> {/* ✅ Envuelve todo */}
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <Router>
         <div className="min-h-screen bg-[#0a0a0a] pb-16 md:pb-0">
           <Navigation />
           <Routes key={window.location.pathname}>
-            {/* Public Routes */}
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/reset-password" element={<PasswordReset />} />
+
+            {/* ── Rutas públicas ──────────────────────────────────────── */}
+            <Route path="/"                element={<Login />} />
+            <Route path="/login"           element={<Login />} />
+            <Route path="/register"        element={<Register />} />
+            <Route path="/reset-password"  element={<PasswordReset />} />
             <Route path="/update-password" element={<UpdatePassword />} />
 
-            {/* Partially Protected / Hybrid Routes */}
-            <Route path="/home" element={<Home />} />
-            <Route path="/map" element={<MapPage />} />
-            <Route path="/venue/:id" element={<VenueDetail />} />
-            <Route path="/events" element={<Events />} />
+            {/* ── Rutas híbridas (no requieren auth estricto) ─────────── */}
+            <Route path="/home"        element={<Home />} />
+            <Route path="/map"         element={<MapPage />} />
+            <Route path="/venue/:id"   element={<VenueDetail />} />
+            <Route path="/events"      element={<Events />} />
 
-            {/* Protected Routes */}
+            {/* ── Rutas protegidas — usuario normal ───────────────────── */}
             <Route path="/register-venue" element={<ProtectedRoute><RegisterVenue /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/edit-venue/:id" element={<ProtectedRoute><EditVenue /></ProtectedRoute>} />
-            <Route path="/favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
-            <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
+            <Route path="/favorites"      element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+
+            {/* ── Rutas protegidas — administrador ────────────────────── */}
+            <Route path="/dashboard"      element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/admin"          element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+            <Route path="/stats"          element={<ProtectedRoute><Stats /></ProtectedRoute>} />
+
+            {/* ✅ NUEVA RUTA — Mi Perfil del administrador */}
+            <Route path="/admin/profile"  element={<ProtectedRoute><AdminProfile /></ProtectedRoute>} />
+
           </Routes>
         </div>
       </Router>
-    </APIProvider> 
+    </APIProvider>
   );
 }
