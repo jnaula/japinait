@@ -1,21 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Search, MapPin, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, MapPin, ChevronRight, ChevronUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
 
-// ——— Banner data (puedes editar estos o traerlos de Supabase luego) ———
 const BANNERS = [
   {
     id: 1,
-    title: 'Disfruta la noche',
+    title: 'Disfruta livias',
     highlight: 'noches',
-    subtitle: 'aseguradas',
-    description: '¡Conoce aquí los mejores clubes de Quito!',
+    subtitle: 'aseyradas',
+    description: '¡Conoce aquí los mejores clubes de Guayaquil!',
     cta: '¡Descúbrelos!',
     bg: 'from-[#1a0533] via-[#2d0a5e] to-[#0a0a1a]',
     accent: '#ff0080',
-    city: 'Quito',
   },
   {
     id: 2,
@@ -26,15 +24,13 @@ const BANNERS = [
     cta: '¡Explóralos!',
     bg: 'from-[#0a1a33] via-[#0a2d5e] to-[#0a0a1a]',
     accent: '#7928ca',
-    city: 'Quito',
   },
 ];
 
-// ——— Recomendado por secciones ———
 const CURATORS = [
+  { id: 'staff', label: 'Staff JapiNait', emoji: '🔥' },
   { id: 'djs', label: 'DJs locales', emoji: '🎧' },
   { id: 'influencers', label: 'Influencers', emoji: '📸' },
-  { id: 'staff', label: 'Staff JapiNait', emoji: '🔥' },
 ];
 
 export default function Home() {
@@ -45,12 +41,13 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBanner, setActiveBanner] = useState(0);
   const [activeCurator, setActiveCurator] = useState('staff');
+  const [showAllVenues, setShowAllVenues] = useState(false);
   const scrollRef = useRef(null);
+  const allVenuesRef = useRef(null);
 
   useEffect(() => {
     fetchVenueTypes();
     fetchVenues();
-    // Auto-rotate banners
     const timer = setInterval(() => {
       setActiveBanner((prev) => (prev + 1) % BANNERS.length);
     }, 5000);
@@ -72,7 +69,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('venues')
-        .select(`*, venue_types(name), venue_photos(photo_url, is_primary)`)
+        .select('*, venue_types(name), venue_photos(photo_url, is_primary)')
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -90,7 +87,6 @@ export default function Home() {
         };
       });
 
-      // Orden aleatorio cada vez que se abre la app
       const shuffled = [...processedVenues].sort(() => Math.random() - 0.5);
       setVenues(shuffled);
     } catch (err) {
@@ -109,40 +105,42 @@ export default function Home() {
     return matchesType && matchesSearch;
   });
 
-  // Simula secciones "Recomendado por" — en el futuro puedes agregar un campo curator en Supabase
-  const popularVenues = venues.filter((_, i) => i % 3 === 0).slice(0, 6);
-  const newVenues = venues.slice(0, 6);
-  const recommendedVenues = venues.filter((_, i) => i % 2 === 0).slice(0, 6);
-
   const getCuratorVenues = () => {
-    if (activeCurator === 'djs') return popularVenues;
-    if (activeCurator === 'influencers') return newVenues;
-    return recommendedVenues;
+    if (activeCurator === 'djs') return venues.filter((_, i) => i % 3 === 0).slice(0, 8);
+    if (activeCurator === 'influencers') return venues.filter((_, i) => i % 2 === 0).slice(0, 8);
+    return venues.slice(0, 8);
+  };
+
+  const handleVerTodos = () => {
+    setShowAllVenues(true);
+    setTimeout(() => {
+      allVenuesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  };
+
+  const handleOcultarTodos = () => {
+    setShowAllVenues(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const banner = BANNERS[activeBanner];
+  const isFiltering = searchQuery || selectedType !== 'all';
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
-        {/* ——— HEADER ——— */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
+        {/* HEADER */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <h1 className="text-3xl font-extrabold text-white leading-tight">
-            Explora{' '}
-            <span className="text-[#ff0080]">locales</span>{' '}
-            <span>🔥</span>
+            Explora <span className="text-[#ff0080]">locales</span> 🔥
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Navega por todos los locales registrados en Quito
+            Buscar locales que pro<span className="text-[#7928ca] font-semibold">kuentate</span> còño menos
           </p>
         </motion.div>
 
-        {/* ——— SEARCH ——— */}
+        {/* SEARCH */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -159,18 +157,15 @@ export default function Home() {
           />
         </motion.div>
 
-        {/* ——— FILTROS PILL ——— */}
+        {/* FILTROS PILL */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide"
+          className="flex gap-2 overflow-x-auto pb-2 mb-6"
           style={{ scrollbarWidth: 'none' }}
         >
-          <PillFilter
-            active={selectedType === 'all'}
-            onClick={() => setSelectedType('all')}
-          >
+          <PillFilter active={selectedType === 'all'} onClick={() => setSelectedType('all')}>
             Todos
           </PillFilter>
           {venueTypes.map((type) => (
@@ -184,155 +179,11 @@ export default function Home() {
           ))}
         </motion.div>
 
-        {/* ——— BANNER ——— */}
-        {!searchQuery && selectedType === 'all' && (
-          <motion.div
-            key={banner.id}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className={`relative rounded-2xl overflow-hidden mb-8 bg-gradient-to-r ${banner.bg} p-5`}
-            style={{ minHeight: '140px' }}
-          >
-            {/* Decorative glow */}
-            <div
-              className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-20 blur-2xl"
-              style={{ background: banner.accent }}
-            />
-            <div className="relative z-10">
-              <p className="text-white/80 text-sm font-medium italic">{banner.title}</p>
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span
-                  className="text-3xl font-black italic"
-                  style={{
-                    background: `linear-gradient(90deg, #fff 0%, ${banner.accent} 100%)`,
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                >
-                  {banner.highlight}
-                </span>
-                <span className="text-[#7928ca] font-bold text-xl">{banner.subtitle}</span>
-              </div>
-              <p className="text-gray-300 text-xs mt-1 mb-3">{banner.description}</p>
-              <button
-                className="px-4 py-1.5 rounded-full text-sm font-bold text-black"
-                style={{ background: banner.accent === '#ff0080' ? '#f5c518' : banner.accent }}
-              >
-                {banner.cta}
-              </button>
-            </div>
-
-            {/* Dots */}
-            <div className="absolute bottom-3 right-4 flex gap-1">
-              {BANNERS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveBanner(i)}
-                  className="rounded-full transition-all"
-                  style={{
-                    width: i === activeBanner ? 16 : 6,
-                    height: 6,
-                    background: i === activeBanner ? banner.accent : '#ffffff40',
-                  }}
-                />
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ——— SECCIÓN: RECOMENDADO POR ——— */}
-        {!searchQuery && selectedType === 'all' && (
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-white font-bold text-lg">Recomendado por...</h2>
-              <button className="flex items-center gap-1 text-[#ff0080] text-xs font-semibold">
-                Ver todos <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-
-            {/* Curator tabs */}
-            <div className="flex gap-2 mb-4">
-              {CURATORS.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveCurator(c.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    activeCurator === c.id
-                      ? 'bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white'
-                      : 'bg-[#161616] text-gray-400 border border-[#222]'
-                  }`}
-                >
-                  <span>{c.emoji}</span>
-                  {c.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Horizontal scroll cards */}
-            <div
-              ref={scrollRef}
-              className="flex gap-4 overflow-x-auto pb-2"
-              style={{ scrollbarWidth: 'none' }}
-            >
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="flex-shrink-0 w-44 h-56 rounded-2xl bg-[#161616] animate-pulse"
-                    />
-                  ))
-                : getCuratorVenues().map((venue, i) => (
-                    <motion.div
-                      key={venue.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="flex-shrink-0 w-44"
-                    >
-                      <VenueCard venue={venue} compact />
-                    </motion.div>
-                  ))}
-            </div>
-          </section>
-        )}
-
-        {/* ——— SECCIÓN: POPULARES ——— */}
-        {!searchQuery && selectedType === 'all' && (
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-white font-bold text-lg">
-                Populares <span className="text-[#ff0080]">populares</span>
-              </h2>
-              <button className="flex items-center gap-1 text-[#ff0080] text-xs font-semibold">
-                Ver todos <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-52 rounded-2xl bg-[#161616] animate-pulse" />
-                  ))
-                : venues.slice(0, 4).map((venue, i) => (
-                    <motion.div
-                      key={venue.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.06 }}
-                    >
-                      <VenueCard venue={venue} />
-                    </motion.div>
-                  ))}
-            </div>
-          </section>
-        )}
-
-        {/* ——— LISTA FILTRADA (cuando hay búsqueda o filtro activo) ——— */}
-        {(searchQuery || selectedType !== 'all') && (
+        {/* MODO FILTRADO */}
+        {isFiltering ? (
           <section>
             <p className="text-gray-500 text-sm mb-4">
-              Mostrando{' '}
-              <span className="text-white font-semibold">{filteredVenues.length}</span>{' '}
+              Mostrando <span className="text-white font-semibold">{filteredVenues.length}</span>{' '}
               {filteredVenues.length === 1 ? 'local' : 'locales'}
             </p>
             {loading ? (
@@ -368,9 +219,195 @@ export default function Home() {
               </div>
             )}
           </section>
+
+        ) : (
+          <>
+            {/* BANNER */}
+            <motion.div
+              key={banner.id}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className={`relative rounded-2xl overflow-hidden mb-8 bg-gradient-to-r ${banner.bg} p-5`}
+              style={{ minHeight: '140px' }}
+            >
+              <div
+                className="absolute -right-8 -top-8 w-40 h-40 rounded-full opacity-20 blur-2xl"
+                style={{ background: banner.accent }}
+              />
+              <div className="relative z-10">
+                <p className="text-white/80 text-sm font-medium italic">{banner.title}</p>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span
+                    className="text-3xl font-black italic"
+                    style={{
+                      background: `linear-gradient(90deg, #fff 0%, ${banner.accent} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    {banner.highlight}
+                  </span>
+                  <span className="text-[#7928ca] font-bold text-xl">{banner.subtitle}</span>
+                </div>
+                <p className="text-gray-300 text-xs mt-1 mb-3">{banner.description}</p>
+                <button className="px-4 py-1.5 rounded-full text-sm font-bold text-black bg-[#f5c518]">
+                  {banner.cta}
+                </button>
+              </div>
+              <div className="absolute bottom-3 right-4 flex gap-1">
+                {BANNERS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveBanner(i)}
+                    className="rounded-full transition-all"
+                    style={{
+                      width: i === activeBanner ? 16 : 6,
+                      height: 6,
+                      background: i === activeBanner ? banner.accent : '#ffffff40',
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+
+            {/* RECOMENDADO POR */}
+            <section className="mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-white font-bold text-lg">Recomendado por...</h2>
+                <button
+                  onClick={handleVerTodos}
+                  className="flex items-center gap-1 text-[#ff0080] text-xs font-semibold"
+                >
+                  Ver todos <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="flex gap-2 mb-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                {CURATORS.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setActiveCurator(c.id)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                      activeCurator === c.id
+                        ? 'bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white'
+                        : 'bg-[#161616] text-gray-400 border border-[#222]'
+                    }`}
+                  >
+                    <span>{c.emoji}</span> {c.label}
+                  </button>
+                ))}
+              </div>
+              <div
+                ref={scrollRef}
+                className="flex gap-4 overflow-x-auto pb-2"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {loading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex-shrink-0 w-44 h-56 rounded-2xl bg-[#161616] animate-pulse" />
+                    ))
+                  : getCuratorVenues().map((venue, i) => (
+                      <motion.div
+                        key={venue.id}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex-shrink-0 w-44"
+                      >
+                        <VenueCard venue={venue} compact />
+                      </motion.div>
+                    ))}
+              </div>
+            </section>
+
+            {/* TODOS LOS LOCALES */}
+            <section ref={allVenuesRef} className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-white font-bold text-lg">Todos los locales</h2>
+                  <p className="text-gray-500 text-xs mt-0.5">{venues.length} locales disponibles</p>
+                </div>
+                {venues.length > 4 && (
+                  <button
+                    onClick={showAllVenues ? handleOcultarTodos : handleVerTodos}
+                    className="flex items-center gap-1 text-[#ff0080] text-xs font-semibold"
+                  >
+                    {showAllVenues
+                      ? <><ChevronUp className="w-3 h-3" /> Ocultar</>
+                      : <>Ver todos <ChevronRight className="w-3 h-3" /></>
+                    }
+                  </button>
+                )}
+              </div>
+
+              {/* Primeros 4 siempre visibles */}
+              <div className="grid grid-cols-2 gap-4">
+                {loading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="h-52 rounded-2xl bg-[#161616] animate-pulse" />
+                    ))
+                  : venues.slice(0, 4).map((venue, i) => (
+                      <motion.div
+                        key={venue.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                      >
+                        <VenueCard venue={venue} />
+                      </motion.div>
+                    ))}
+              </div>
+
+              {/* El resto se expande */}
+              <AnimatePresence>
+                {showAllVenues && venues.length > 4 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      {venues.slice(4).map((venue, i) => (
+                        <motion.div
+                          key={venue.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                        >
+                          <VenueCard venue={venue} />
+                        </motion.div>
+                      ))}
+                    </div>
+                    <div className="text-center mt-6">
+                      <button
+                        onClick={handleOcultarTodos}
+                        className="flex items-center gap-1 text-gray-500 text-xs font-semibold mx-auto hover:text-white transition-colors"
+                      >
+                        <ChevronUp className="w-3 h-3" /> Ocultar
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Botón Ver todos centrado */}
+              {!showAllVenues && !loading && venues.length > 4 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-5">
+                  <button
+                    onClick={handleVerTodos}
+                    className="px-6 py-3 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+                  >
+                    Ver todos los locales ({venues.length})
+                  </button>
+                </motion.div>
+              )}
+            </section>
+          </>
         )}
 
-        {/* ——— FOOTER ——— */}
+        {/* FOOTER */}
         <div className="text-center pt-8 mt-4 border-t border-[#1a1a1a]">
           <p className="text-gray-700 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
           <div className="flex items-center justify-center gap-4">
@@ -399,7 +436,6 @@ export default function Home() {
   );
 }
 
-// ——— Pill filter button ———
 function PillFilter({ active, onClick, children }) {
   return (
     <button
