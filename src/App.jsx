@@ -20,6 +20,28 @@ import AdminProfile from './pages/AdminProfile'; // ✅ NUEVO: perfil del admini
 import UserProfile from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import EditVenue from './pages/EditVenue';
+import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+function BackButtonHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleBackButton = (e) => {
+      e.preventDefault();
+      // Si no estamos en home o login, navegar atrás
+      if (location.pathname !== '/home' && location.pathname !== '/login') {
+        navigate(-1);
+      }
+    };
+
+    window.addEventListener('popstate', handleBackButton);
+    return () => window.removeEventListener('popstate', handleBackButton);
+  }, [location, navigate]);
+
+  return null;
+}
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
@@ -37,6 +59,7 @@ export default function App() {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <Router>
+        <BackButtonHandler/>
         <div className="min-h-screen bg-[#0a0a0a] pb-16 md:pb-0">
           <Navigation />
           <Routes key={window.location.pathname}>

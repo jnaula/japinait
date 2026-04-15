@@ -146,7 +146,7 @@ export default function Dashboard() {
             <p className="text-gray-400 text-sm">Total registrados</p>
           </motion.div>
 
-          <motion.div
+          {/*<motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -177,6 +177,7 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold text-white">Pendientes</h3>
             <p className="text-gray-400 text-sm">En revisión</p>
           </motion.div>
+          */}
         </div>
 
         <motion.div
