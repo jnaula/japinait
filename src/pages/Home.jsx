@@ -9,8 +9,8 @@ const BANNERS = [
     id: 1,
     title: 'Disfruta livias',
     highlight: 'noches',
-    subtitle: 'aseyradas',
-    description: '¡Conoce aquí los mejores clubes de Guayaquil!',
+    subtitle: 'aseguradas',
+    description: '¡Conoce aquí los mejores clubes de la Foch!',
     cta: '¡Descúbrelos!',
     bg: 'from-[#1a0533] via-[#2d0a5e] to-[#0a0a1a]',
     accent: '#ff0080',
@@ -136,7 +136,7 @@ export default function Home() {
             Explora <span className="text-[#ff0080]">locales</span> 🔥
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Buscar locales que pro<span className="text-[#7928ca] font-semibold">kuentate</span> còño menos
+            Navega por todos los locales regitrados cerca de ti!
           </p>
         </motion.div>
 
