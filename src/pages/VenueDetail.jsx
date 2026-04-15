@@ -144,6 +144,7 @@ const [showPromotions, setShowPromotions] = useState(false);
 
   const touchStartX = useRef(null);
   const lightboxTouchStartX = useRef(null);
+  const isOwner = user && venue && venue.owner_id === user.id;
    
    useEffect(()=>{window.scrollTo({top: 0, behavior: 'instant'});
   }, [id]);
@@ -436,7 +437,7 @@ setPromotions(promoData || []);
         </div>
 
         <div className="absolute top-6 right-6 flex items-center space-x-2 z-10">
-          {userRole === 'venue_admin' && user && venue.user_id === user.id && (
+          {userRole === 'venue_admin' && isOwner && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
