@@ -17,6 +17,7 @@ import Favorites from './pages/Favorites';
 import AdminPanel from './pages/AdminPanel';
 import Stats from './pages/Stats';
 import AdminProfile from './pages/AdminProfile'; // ✅ NUEVO: perfil del administrador
+import UserProfile from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import EditVenue from './pages/EditVenue';
 
@@ -65,7 +66,7 @@ export default function App() {
 
             {/* ✅ NUEVA RUTA — Mi Perfil del administrador */}
             <Route path="/admin/profile"  element={<ProtectedRoute><AdminProfile /></ProtectedRoute>} />
-
+            <Route path="/profile"        element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
           </Routes>
         </div>
       </Router>

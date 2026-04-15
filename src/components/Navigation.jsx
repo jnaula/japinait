@@ -212,6 +212,15 @@ export default function Navigation() {
                 <BottomTab to="/map"       label="Mapa"      active={isActive('/map')} icon={<MapIcon active={isActive('/map')} />} />
                 <BottomTab to="/events"    label="Eventos"   active={isActive('/events')} icon={<EventsIcon active={isActive('/events')} />} />
                 <BottomTab to="/favorites" label="Favoritos" active={isActive('/favorites')} icon={<FavIcon active={isActive('/favorites')} />} />
+                <BottomTab to="/profile"   label="Perfil"    active={isActive('/profile')}
+  icon={
+    <svg viewBox="0 0 24 24" fill={isActive('/profile') ? 'currentColor' : 'none'}
+      stroke="currentColor" strokeWidth={2} className="w-6 h-6">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  }
+/>
                 {/*
                   Botón "Salir" del usuario normal — comentado para uso futuro
                   <button onClick={handleLogout} className="flex flex-col items-center text-red-400 text-xs">
