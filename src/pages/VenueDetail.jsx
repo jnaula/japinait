@@ -436,7 +436,7 @@ setPromotions(promoData || []);
         </div>
 
         <div className="absolute top-6 right-6 flex items-center space-x-2 z-10">
-          {userRole === 'venue_admin' && (
+          {userRole === 'venue_admin' && user && venue.user_id === user.id && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
