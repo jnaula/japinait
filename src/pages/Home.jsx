@@ -8,14 +8,14 @@ import VenueCard from '../components/venue/VenueCard';
 const BANNERS = [
   {
     id: 1,
-    title: 'Disfruta livias',
+    title: 'Disfruta la noche',
     highlight: 'noches',
-    subtitle: 'aseyradas',
-    description: '¡Conoce aquí los mejores clubes de Guayaquil!',
+    subtitle: 'aseguradas',
+    description: '¡Conoce aquí los mejores clubes de Quito!',
     cta: '¡Descúbrelos!',
     bg: 'from-[#1a0533] via-[#2d0a5e] to-[#0a0a1a]',
     accent: '#ff0080',
-    city: 'Guayaquil',
+    city: 'Quito',
   },
   {
     id: 2,
@@ -138,9 +138,7 @@ export default function Home() {
             <span>🔥</span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Buscar locales que pro
-            <span className="text-[#7928ca] font-semibold">kuentate</span>{' '}
-            còño menos
+            Navega por todos los locales registrados en Quito
           </p>
         </motion.div>
 
