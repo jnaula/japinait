@@ -136,7 +136,7 @@ export default function Dashboard() {
             <p className="text-gray-400 text-sm">Total registrados</p>
           </motion.div>
 
-          {/* Aprobados */}
+          {/* Aprobados
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
@@ -147,9 +147,9 @@ export default function Dashboard() {
             </div>
             <h3 className="text-lg font-semibold text-white">Aprobados</h3>
             <p className="text-gray-400 text-sm">Locales activos</p>
-          </motion.div>
+          </motion.div>*/}
 
-          {/* Pendientes */}
+          {/* Pendientes 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
@@ -160,7 +160,7 @@ export default function Dashboard() {
             </div>
             <h3 className="text-lg font-semibold text-white">Pendientes</h3>
             <p className="text-gray-400 text-sm">En revisión</p>
-          </motion.div>
+          </motion.div>*/}
         </div>
 
         {/* ── SECCIÓN PRINCIPAL — MIS LOCALES ──────────────────────────── */}
