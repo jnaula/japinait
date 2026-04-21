@@ -1,7 +1,10 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { APIProvider } from '@vis.gl/react-google-maps';
+import { App as CapacitorApp } from '@capacitor/app';
+import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
 import MapPage from './pages/MapPage';
@@ -16,34 +19,39 @@ import Events from './pages/Events';
 import Favorites from './pages/Favorites';
 import AdminPanel from './pages/AdminPanel';
 import Stats from './pages/Stats';
-import AdminProfile from './pages/AdminProfile'; // ✅ NUEVO: perfil del administrador
+import AdminProfile from './pages/AdminProfile';
 import UserProfile from './pages/UserProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import EditVenue from './pages/EditVenue';
-import { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
 function BackButtonHandler() {
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const handleBackButton = (e) => {
-      e.preventDefault();
-      // Si no estamos en home o login, navegar atrás
-      if (location.pathname !== '/home' && location.pathname !== '/login') {
+    let handler;
+
+    CapacitorApp.addListener('backButton', () => {
+      if (
+        location.pathname === '/home' ||
+        location.pathname === '/login' ||
+        location.pathname === '/'
+      ) {
+        CapacitorApp.minimizeApp();
+      } else {
         navigate(-1);
       }
-    };
+    }).then(h => { handler = h; });
 
-    window.addEventListener('popstate', handleBackButton);
-    return () => window.removeEventListener('popstate', handleBackButton);
+    return () => {
+      if (handler) handler.remove();
+    };
   }, [location, navigate]);
 
   return null;
 }
-
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
 export default function App() {
   const { loading } = useAuth();
@@ -59,7 +67,7 @@ export default function App() {
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <Router>
-        <BackButtonHandler/>
+        <BackButtonHandler />
         <div className="min-h-screen bg-[#0a0a0a] pb-16 md:pb-0">
           <Navigation />
           <Routes key={window.location.pathname}>
@@ -71,7 +79,7 @@ export default function App() {
             <Route path="/reset-password"  element={<PasswordReset />} />
             <Route path="/update-password" element={<UpdatePassword />} />
 
-            {/* ── Rutas híbridas (no requieren auth estricto) ─────────── */}
+            {/* ── Rutas híbridas ──────────────────────────────────────── */}
             <Route path="/home"        element={<Home />} />
             <Route path="/map"         element={<MapPage />} />
             <Route path="/venue/:id"   element={<VenueDetail />} />
@@ -81,15 +89,14 @@ export default function App() {
             <Route path="/register-venue" element={<ProtectedRoute><RegisterVenue /></ProtectedRoute>} />
             <Route path="/edit-venue/:id" element={<ProtectedRoute><EditVenue /></ProtectedRoute>} />
             <Route path="/favorites"      element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+            <Route path="/profile"        element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
 
             {/* ── Rutas protegidas — administrador ────────────────────── */}
             <Route path="/dashboard"      element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/admin"          element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
             <Route path="/stats"          element={<ProtectedRoute><Stats /></ProtectedRoute>} />
-
-            {/* ✅ NUEVA RUTA — Mi Perfil del administrador */}
             <Route path="/admin/profile"  element={<ProtectedRoute><AdminProfile /></ProtectedRoute>} />
-            <Route path="/profile"        element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+
           </Routes>
         </div>
       </Router>

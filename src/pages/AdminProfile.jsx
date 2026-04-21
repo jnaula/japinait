@@ -9,7 +9,7 @@
 //   - Listado de locales del administrador
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Mail, Phone, Lock, Building2, MapPin,
@@ -380,10 +380,11 @@ export default function AdminProfile() {
           <div className="text-center py-8 bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl mb-8">
             <Building2 className="w-10 h-10 text-gray-600 mx-auto mb-2" />
             <p className="text-gray-500 text-sm">No tienes locales registrados</p>
-            <a href="/register-venue"
+            <Link
+              to="/register-venue"
               className="inline-block mt-3 px-5 py-2 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-semibold">
               Registrar local
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="space-y-3 mb-8">
