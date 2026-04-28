@@ -7,9 +7,8 @@ import VenueCard from '../components/venue/VenueCard';
 const BANNERS = [
   {
     id: 1,
-    title: 'Disfruta livias',
-    highlight: 'noches',
-    subtitle: 'aseguradas',
+    title: 'Descubre el plan perfecto con',
+    highlight: 'JapiNait',
     description: '¡Conoce aquí los mejores clubes de la Foch!',
     cta: '¡Descúbrelos!',
     bg: 'from-[#1a0533] via-[#2d0a5e] to-[#0a0a1a]',
@@ -18,8 +17,7 @@ const BANNERS = [
   {
     id: 2,
     title: 'Las mejores',
-    highlight: 'noches',
-    subtitle: 'de Quito',
+    highlight: 'noches de Quito',
     description: '¡Descubre los bares y discotecas más exclusivos!',
     cta: '¡Explóralos!',
     bg: 'from-[#0a1a33] via-[#0a2d5e] to-[#0a0a1a]',

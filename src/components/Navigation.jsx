@@ -16,26 +16,42 @@ export default function Navigation() {
     navigate('/login');
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-    }
-  }, [user]);
+useEffect(() => {
+  if (user) {
+    fetchProfile();
+  } else {
+    setProfile(null);
+  }
+}, [user]);
 
-  const fetchProfile = async () => {
-    try {
-      const { data, error } = await supabase
+const fetchProfile = async () => {
+  try {
+    // ✅ Reintentar hasta 5 veces si el perfil no está listo aún
+    let attempts = 0;
+    let data = null;
+
+    while (attempts < 5) {
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      if (!error) setProfile(data);
-    } catch (err) {
-      console.error(err);
+
+      if (profileData && !error) {
+        data = profileData;
+        break;
+      }
+
+      attempts++;
+      // Esperar 800ms antes de reintentar
+      await new Promise(resolve => setTimeout(resolve, 800));
     }
-  };
+
+    if (data) setProfile(data);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const handleSignOut = async () => {
     const { error } = await signOut();

@@ -172,11 +172,16 @@ export default function RegisterVenue() {
       alert('Local registrado exitosamente.');
       navigate('/dashboard');
     } catch (err) {
-      console.error('RegisterVenue: Error:', err);
-      alert('Error al registrar el local: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+  console.error('RegisterVenue: Error:', err);
+  if (err?.message?.includes('JWT') || err?.message?.includes('session')) {
+    alert('Tu sesión expiró. Por favor inicia sesión de nuevo.');
+    window.location.href = '/login';
+  } else {
+    alert('Error al registrar el local: ' + err.message);
+  }
+} finally {
+  setLoading(false);
+}
   };
 
   if (!user) {
@@ -434,21 +439,28 @@ export default function RegisterVenue() {
           />
 
           
-          <PhotoUpload photos={photos} onPhotosChange={setPhotos} maxPhotos={5} />
+          <PhotoUpload photos={photos} onPhotosChange={setPhotos} maxPhotos={8} />
 
           <div className="flex justify-end space-x-4">
             <a href="/" className="px-6 py-3 bg-[#1a1a1a] text-gray-300 rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors">
               Cancelar
             </a>
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading}
-              className="px-6 py-3 bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Registrando...' : 'Registrar Local'}
-            </motion.button>
+  whileHover={{ scale: loading ? 1 : 1.02 }}
+  whileTap={{ scale: loading ? 1 : 0.98 }}
+  type="submit"
+  disabled={loading}
+  className="px-6 py-3 bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {loading ? (
+    <div className="flex items-center space-x-2">
+      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <span>Registrando...</span>
+    </div>
+  ) : (
+    'Registrar Local'
+  )}
+</motion.button>
           </div>
         </motion.form>
       </div>

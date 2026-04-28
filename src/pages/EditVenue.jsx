@@ -35,6 +35,7 @@ export default function EditVenue() {
   const [editingPromo, setEditingPromo] = useState(null);
   const [editPromoTitle, setEditPromoTitle] = useState('');
   const [editPromoDescription, setEditPromoDescription] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchVenue();
@@ -152,14 +153,16 @@ export default function EditVenue() {
   };
 
   const handleUpdate = async () => {
-    if (!name || !address || !venueType)
-      return alert('Completa nombre, dirección y tipo de local');
+  if (!name || !address || !venueType)
+    return alert('Completa nombre, dirección y tipo de local');
 
+  setSaving(true); // ✅
+  try {
     const { error } = await supabase
       .from('venues')
       .update({ name, description, address, venue_type_id: venueType, latitude, longitude })
       .eq('id', id);
-    if (error) return alert('Error al actualizar');
+    if (error) throw error;
 
     for (const photo of existingPhotos) {
       const isPrimary = primaryPhoto === `existing-${photo.id}`;
@@ -179,7 +182,18 @@ export default function EditVenue() {
     photoPreviews.forEach((url) => URL.revokeObjectURL(url));
     alert('Local actualizado 🔥');
     navigate(`/venue/${id}`);
-  };
+  } catch (err) {
+    // ✅ Manejo de sesión expirada
+    if (err?.message?.includes('JWT') || err?.message?.includes('session')) {
+      alert('Tu sesión expiró. Por favor inicia sesión de nuevo.');
+      navigate('/login');
+    } else {
+      alert('Error al actualizar: ' + err.message);
+    }
+  } finally {
+    setSaving(false); // ✅
+  }
+};
 
   const handleDeletePhoto = async (photoId) => {
     if (!confirm('¿Eliminar foto?')) return;
@@ -464,11 +478,19 @@ export default function EditVenue() {
       </div>
 
       <button
-        onClick={handleUpdate}
-        className="w-full py-3 mt-4 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold"
-      >
-        Guardar cambios
-      </button>
+  onClick={handleUpdate}
+  disabled={saving}
+  className="w-full py-3 mt-4 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {saving ? (
+    <div className="flex items-center justify-center space-x-2">
+      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <span>Guardando...</span>
+    </div>
+  ) : (
+    'Guardar cambios'
+  )}
+</button>
     </div>
   );
 }
