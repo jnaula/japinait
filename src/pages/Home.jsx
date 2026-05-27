@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, ChevronRight, ChevronUp, ArrowLeft, Share2, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -10,8 +11,13 @@ const CURATORS = [
   { id: 'influencers', label: 'Influencers', emoji: '📸' },
 ];
 
-const CHAMPIONS_EXPIRY = new Date('2026-06-01T00:00:00');
+// ── Fechas de expiración ──────────────────────────────────
+// El evento Champions expira el 1 de junio a las 00:00 (hora local)
+const CHAMPIONS_EXPIRY = new Date('2025-06-01T00:00:00');
+// Aquí pon la fecha en que quieres mostrar el banner del Mundial
+const MUNDIAL_START = new Date('2025-06-01T00:00:00');
 
+// Fallback para cuando banner-mundial.jpeg aún no existe en /public
 function BannerMundial({ className = '', style = {}, onClick }) {
   const [hasImage, setHasImage] = React.useState(true);
 
@@ -28,6 +34,7 @@ function BannerMundial({ className = '', style = {}, onClick }) {
     );
   }
 
+  // Gradiente placeholder hasta que exista el banner
   return (
     <div
       onClick={onClick}
@@ -54,6 +61,7 @@ function BannerMundial({ className = '', style = {}, onClick }) {
 function getEventPhase() {
   const now = new Date();
   if (now < CHAMPIONS_EXPIRY) return 'champions';
+  // Cambia esta fecha si el Mundial empieza más tarde
   return 'mundial';
 }
 
@@ -73,14 +81,17 @@ export default function Home() {
 
   const eventPhase = getEventPhase();
 
+  // ── Historia del navegador para botón atrás del teléfono ──
   useEffect(() => {
     if (showRuta) {
+      // Empuja un nuevo estado cuando se abre la ruta
       window.history.pushState({ rutaOpen: true }, '');
     }
   }, [showRuta]);
 
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (e) => {
+      // El usuario pulsó el botón atrás nativo
       if (showRuta) {
         setShowRuta(false);
         setRutaTab('ruta');
@@ -90,7 +101,10 @@ export default function Home() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [showRuta]);
 
+  // ── Cerrar la ruta también limpia el estado del historial ──
   const handleCloseRuta = () => {
+    // Si el estado actual es el que nosotros pusimos, volvemos atrás
+    // para que el historial quede limpio
     if (window.history.state?.rutaOpen) {
       window.history.back();
     } else {
@@ -170,14 +184,19 @@ export default function Home() {
 
   const isFiltering = searchQuery || selectedType !== 'all';
 
-  // ── PANTALLA RUTA ─────────────────────────────────────
+  // ── PANTALLA RUTA DEL PARTIDO ─────────────────────────
   if (showRuta) {
     const isChampions = eventPhase === 'champions';
     return (
       <div className="min-h-screen bg-[#0d0d0d] pb-10">
+        {/* Header */}
         <div className="sticky top-0 z-20 bg-[#0d0d0d]/95 backdrop-blur-md border-b border-white/5 px-4 py-3">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <button onClick={handleCloseRuta} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+            {/* Botón volver — también funciona con el back del teléfono */}
+            <button
+              onClick={handleCloseRuta}
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            >
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Volver</span>
             </button>
@@ -191,25 +210,37 @@ export default function Home() {
         </div>
 
         <div className="max-w-2xl mx-auto px-4 pt-4">
+          {/* Tabs */}
           <div className="flex border-b border-white/10 mb-5">
             {['ruta', 'promos', 'info'].map((tab) => (
-              <button key={tab} onClick={() => setRutaTab(tab)}
+              <button
+                key={tab}
+                onClick={() => setRutaTab(tab)}
                 className={`px-5 py-2.5 text-sm font-semibold capitalize transition-all border-b-2 -mb-px ${
-                  rutaTab === tab ? 'text-[#7928ca] border-[#7928ca]' : 'text-gray-500 border-transparent hover:text-gray-300'
-                }`}>
+                  rutaTab === tab
+                    ? 'text-[#7928ca] border-[#7928ca]'
+                    : 'text-gray-500 border-transparent hover:text-gray-300'
+                }`}
+              >
                 {tab === 'ruta' ? 'Ruta' : tab === 'promos' ? 'Promos' : 'Info'}
               </button>
             ))}
           </div>
 
+          {/* Banner */}
           <div className="relative rounded-2xl overflow-hidden mb-6">
             {isChampions ? (
-              <img src="/banner-ruta.jpeg" alt="Final Champions League" className="w-full object-cover rounded-2xl" />
+              <img
+                src="/banner-ruta.jpeg"
+                alt="Ruta del Partido - Final Champions League"
+                className="w-full object-cover rounded-2xl"
+              />
             ) : (
               <BannerMundial className="w-full object-cover rounded-2xl" />
             )}
           </div>
 
+          {/* Lista locales ruta */}
           {rutaTab === 'ruta' && (
             rutaVenues.length === 0 ? (
               <div className="text-center py-16">
@@ -218,13 +249,20 @@ export default function Home() {
                 </div>
                 <p className="text-white font-semibold mb-1">Próximamente</p>
                 <p className="text-gray-500 text-sm">
-                  {isChampions ? 'Los locales de la ruta se anunciarán pronto' : 'Los locales del Mundial se anunciarán pronto'}
+                  {isChampions
+                    ? 'Los locales de la ruta se anunciarán pronto'
+                    : 'Los locales del Mundial se anunciarán pronto'}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {rutaVenues.map((venue, i) => (
-                  <motion.div key={venue.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                  <motion.div
+                    key={venue.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.06 }}
+                  >
                     <RutaVenueRow venue={venue} index={i} />
                   </motion.div>
                 ))}
@@ -288,6 +326,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#0d0d0d] pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
+        {/* HEADER */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
           <div className="flex items-center justify-between">
             <div>
@@ -300,6 +339,7 @@ export default function Home() {
           </div>
         </motion.div>
 
+        {/* SEARCH */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="relative mb-5">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -311,6 +351,7 @@ export default function Home() {
           />
         </motion.div>
 
+        {/* FILTROS PILL */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
           className="flex gap-2 overflow-x-auto pb-2 mb-6" style={{ scrollbarWidth: 'none' }}>
           <PillFilter active={selectedType === 'all'} onClick={() => setSelectedType('all')}>Todos</PillFilter>
@@ -321,6 +362,7 @@ export default function Home() {
           ))}
         </motion.div>
 
+        {/* MODO FILTRADO */}
         {isFiltering ? (
           <section>
             <p className="text-gray-500 text-sm mb-4">
@@ -355,17 +397,27 @@ export default function Home() {
           </section>
         ) : (
           <>
+            {/* ── BANNER + EVENTO CERCA DE TI ── */}
+            {/* Se muestran siempre; después del 31/5 cambian al Mundial */}
             {eventPhase === 'champions' ? (
               <>
+                {/* Banner Champions */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
                   className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
                   onClick={() => setShowRuta(true)}
                 >
-                  <img src="/banner-ruta.jpeg" alt="Final Champions League"
-                    className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
+                  <img
+                    src="/banner-ruta.jpeg"
+                    alt="Ruta del Partido - Final Champions League"
+                    className="w-full object-cover rounded-2xl"
+                    style={{ maxHeight: 200 }}
+                  />
                 </motion.div>
 
+                {/* Evento cerca de ti — Champions */}
                 <section className="mb-7">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
@@ -373,9 +425,12 @@ export default function Home() {
                       Ver todas <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <button onClick={() => setShowRuta(true)}
-                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
-                    <div className="w-16 h-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
+                  <button
+                    onClick={() => setShowRuta(true)}
+                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors"
+                  >
+                    {/* Thumb con emoji ⚽ */}
+                    <div className="relative w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
                       <span className="text-3xl">⚽</span>
                     </div>
                     <div className="flex-1 text-left">
@@ -392,14 +447,21 @@ export default function Home() {
               </>
             ) : (
               <>
+                {/* Banner Mundial */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
                   className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
                   onClick={() => setShowRuta(true)}
                 >
-                  <BannerMundial className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
+                  <BannerMundial
+                    className="w-full object-cover rounded-2xl"
+                    style={{ maxHeight: 200 }}
+                  />
                 </motion.div>
 
+                {/* Evento cerca de ti — Mundial */}
                 <section className="mb-7">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
@@ -407,9 +469,11 @@ export default function Home() {
                       Ver todas <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <button onClick={() => setShowRuta(true)}
-                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
-                    <div className="w-16 h-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
+                  <button
+                    onClick={() => setShowRuta(true)}
+                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors"
+                  >
+                    <div className="relative w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
                       <span className="text-3xl">🌍</span>
                     </div>
                     <div className="flex-1 text-left">
@@ -426,6 +490,7 @@ export default function Home() {
               </>
             )}
 
+            {/* RECOMENDADO POR */}
             <section className="mb-7">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-white font-bold text-base">Recomendado por...</h2>
@@ -437,7 +502,9 @@ export default function Home() {
                 {CURATORS.map((c) => (
                   <button key={c.id} onClick={() => setActiveCurator(c.id)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                      activeCurator === c.id ? 'bg-[#7928ca] text-white' : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]'
+                      activeCurator === c.id
+                        ? 'bg-[#7928ca] text-white'
+                        : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]'
                     }`}>
                     <span>{c.emoji}</span> {c.label}
                   </button>
@@ -457,6 +524,7 @@ export default function Home() {
               </div>
             </section>
 
+            {/* TODOS LOS LOCALES */}
             <section ref={allVenuesRef} className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -466,7 +534,9 @@ export default function Home() {
                 {venues.length > 4 && (
                   <button onClick={showAllVenues ? handleOcultarTodos : handleVerTodos}
                     className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
-                    {showAllVenues ? <><ChevronUp className="w-3 h-3" /> Ocultar</> : <>Ver todos <ChevronRight className="w-3 h-3" /></>}
+                    {showAllVenues
+                      ? <><ChevronUp className="w-3 h-3" /> Ocultar</>
+                      : <>Ver todos <ChevronRight className="w-3 h-3" /></>}
                   </button>
                 )}
               </div>
@@ -516,6 +586,7 @@ export default function Home() {
           </>
         )}
 
+        {/* FOOTER */}
         <div className="text-center pt-8 mt-4 border-t border-[#1a1a1a]">
           <p className="text-gray-700 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
           <div className="flex items-center justify-center gap-4">
@@ -536,10 +607,15 @@ export default function Home() {
   );
 }
 
+// ── Fila de local en la ruta ──────────────────────────────
 function RutaVenueRow({ venue, index }) {
+  const navigate = useNavigate();
   const imageUrl = venue.primary_photo || null;
   return (
-    <div className="flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/40 transition-colors cursor-pointer">
+    <div
+      onClick={() => navigate(`/venue/${venue.id}`)}
+      className="flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/40 transition-colors cursor-pointer"
+    >
       <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
         style={{ background: 'linear-gradient(135deg, #7928ca, #ff0080)' }}>
         {index + 1}
@@ -569,7 +645,9 @@ function PillFilter({ active, onClick, children }) {
   return (
     <button onClick={onClick}
       className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-        active ? 'bg-white text-black' : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#7928ca] hover:text-white'
+        active
+          ? 'bg-white text-black'
+          : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#7928ca] hover:text-white'
       }`}>
       {children}
     </button>
