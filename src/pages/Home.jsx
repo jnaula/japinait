@@ -10,7 +10,7 @@ const CURATORS = [
   { id: 'influencers', label: 'Influencers', emoji: '📸' },
 ];
 
-const CHAMPIONS_EXPIRY = new Date('2025-06-01T00:00:00');
+const CHAMPIONS_EXPIRY = new Date('2026-06-01T00:00:00');
 
 function BannerMundial({ className = '', style = {}, onClick }) {
   const [hasImage, setHasImage] = React.useState(true);
