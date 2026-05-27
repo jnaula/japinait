@@ -10,6 +10,53 @@ const CURATORS = [
   { id: 'influencers', label: 'Influencers', emoji: '📸' },
 ];
 
+const CHAMPIONS_EXPIRY = new Date('2025-06-01T00:00:00');
+
+function BannerMundial({ className = '', style = {}, onClick }) {
+  const [hasImage, setHasImage] = React.useState(true);
+
+  if (hasImage) {
+    return (
+      <img
+        src="/banner-mundial.jpeg"
+        alt="Ruta del Mundial"
+        className={className}
+        style={style}
+        onError={() => setHasImage(false)}
+        onClick={onClick}
+      />
+    );
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className={className}
+      style={{
+        ...style,
+        background: 'linear-gradient(135deg, #0c2c0c 0%, #0c1535 50%, #1a0a2e 100%)',
+        minHeight: 140,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
+      <span style={{ fontSize: 40 }}>🌍⚽</span>
+      <p style={{ color: 'white', fontWeight: 700, fontSize: 15, margin: 0 }}>Ruta del Mundial 2026</p>
+      <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: 0 }}>Próximamente</p>
+    </div>
+  );
+}
+
+function getEventPhase() {
+  const now = new Date();
+  if (now < CHAMPIONS_EXPIRY) return 'champions';
+  return 'mundial';
+}
+
 export default function Home() {
   const [venues, setVenues] = useState([]);
   const [rutaVenues, setRutaVenues] = useState([]);
@@ -23,6 +70,34 @@ export default function Home() {
   const [rutaTab, setRutaTab] = useState('ruta');
   const scrollRef = useRef(null);
   const allVenuesRef = useRef(null);
+
+  const eventPhase = getEventPhase();
+
+  useEffect(() => {
+    if (showRuta) {
+      window.history.pushState({ rutaOpen: true }, '');
+    }
+  }, [showRuta]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (showRuta) {
+        setShowRuta(false);
+        setRutaTab('ruta');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [showRuta]);
+
+  const handleCloseRuta = () => {
+    if (window.history.state?.rutaOpen) {
+      window.history.back();
+    } else {
+      setShowRuta(false);
+      setRutaTab('ruta');
+    }
+  };
 
   useEffect(() => {
     fetchVenueTypes();
@@ -95,18 +170,20 @@ export default function Home() {
 
   const isFiltering = searchQuery || selectedType !== 'all';
 
-  // ── PANTALLA RUTA DEL PARTIDO ─────────────────────────
+  // ── PANTALLA RUTA ─────────────────────────────────────
   if (showRuta) {
+    const isChampions = eventPhase === 'champions';
     return (
       <div className="min-h-screen bg-[#0d0d0d] pb-10">
-        {/* Header */}
         <div className="sticky top-0 z-20 bg-[#0d0d0d]/95 backdrop-blur-md border-b border-white/5 px-4 py-3">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <button onClick={() => setShowRuta(false)} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+            <button onClick={handleCloseRuta} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Volver</span>
             </button>
-            <h2 className="text-white font-bold text-base">Ruta del Partido</h2>
+            <h2 className="text-white font-bold text-base">
+              {isChampions ? 'Ruta del Partido' : 'Ruta del Mundial'}
+            </h2>
             <button className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
               <Share2 className="w-4 h-4 text-gray-400" />
             </button>
@@ -114,38 +191,35 @@ export default function Home() {
         </div>
 
         <div className="max-w-2xl mx-auto px-4 pt-4">
-          {/* Tabs */}
           <div className="flex border-b border-white/10 mb-5">
-            {['ruta','promos','info'].map((tab) => (
+            {['ruta', 'promos', 'info'].map((tab) => (
               <button key={tab} onClick={() => setRutaTab(tab)}
                 className={`px-5 py-2.5 text-sm font-semibold capitalize transition-all border-b-2 -mb-px ${
-                  rutaTab === tab
-                    ? 'text-[#7928ca] border-[#7928ca]'
-                    : 'text-gray-500 border-transparent hover:text-gray-300'
+                  rutaTab === tab ? 'text-[#7928ca] border-[#7928ca]' : 'text-gray-500 border-transparent hover:text-gray-300'
                 }`}>
                 {tab === 'ruta' ? 'Ruta' : tab === 'promos' ? 'Promos' : 'Info'}
               </button>
             ))}
           </div>
 
-          {/* Banner Champions — imagen real */}
           <div className="relative rounded-2xl overflow-hidden mb-6">
-            <img
-              src="/banner-ruta.jpeg"
-              alt="Ruta del Partido - Final Champions League"
-              className="w-full object-cover rounded-2xl"
-            />
+            {isChampions ? (
+              <img src="/banner-ruta.jpeg" alt="Final Champions League" className="w-full object-cover rounded-2xl" />
+            ) : (
+              <BannerMundial className="w-full object-cover rounded-2xl" />
+            )}
           </div>
 
-          {/* Lista locales ruta */}
           {rutaTab === 'ruta' && (
             rutaVenues.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-16 h-16 rounded-2xl bg-[#7928ca]/10 border border-[#7928ca]/20 flex items-center justify-center mx-auto mb-3">
-                  <img src={UCL_LOGO} alt="UCL" className="w-8 h-8 object-contain brightness-0 invert opacity-40" />
+                  <span className="text-3xl">{isChampions ? '🏆' : '🌍'}</span>
                 </div>
                 <p className="text-white font-semibold mb-1">Próximamente</p>
-                <p className="text-gray-500 text-sm">Los locales de la ruta se anunciarán pronto</p>
+                <p className="text-gray-500 text-sm">
+                  {isChampions ? 'Los locales de la ruta se anunciarán pronto' : 'Los locales del Mundial se anunciarán pronto'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -161,27 +235,46 @@ export default function Home() {
           {rutaTab === 'promos' && (
             <div className="text-center py-12">
               <Tag className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">Las promociones del partido se anunciarán pronto</p>
+              <p className="text-gray-500 text-sm">Las promociones se anunciarán pronto</p>
             </div>
           )}
 
           {rutaTab === 'info' && (
             <div className="rounded-2xl bg-[#161616] border border-[#222] p-5 space-y-4">
-              <div>
-                <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Evento</p>
-                <p className="text-white font-semibold">Final UEFA Champions League 2025</p>
-              </div>
-              <div>
-                <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Fecha y hora</p>
-                <p className="text-white font-semibold">Sábado 31 de mayo • 15:00</p>
-              </div>
-              <div>
-                <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Partidos</p>
-                <p className="text-white font-semibold">PSG vs Arsenal</p>
-              </div>
+              {isChampions ? (
+                <>
+                  <div>
+                    <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Evento</p>
+                    <p className="text-white font-semibold">Final UEFA Champions League 2025</p>
+                  </div>
+                  <div>
+                    <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Fecha y hora</p>
+                    <p className="text-white font-semibold">Sábado 31 de mayo • 15:00</p>
+                  </div>
+                  <div>
+                    <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Partido</p>
+                    <p className="text-white font-semibold">PSG vs Arsenal</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Evento</p>
+                    <p className="text-white font-semibold">FIFA Mundial 2026</p>
+                  </div>
+                  <div>
+                    <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Más info</p>
+                    <p className="text-white font-semibold">Próximamente</p>
+                  </div>
+                </>
+              )}
               <div>
                 <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Sobre la ruta</p>
-                <p className="text-gray-400 text-sm">Disfruta el partido en los mejores locales de Quito con promociones exclusivas solo por JapiNait.</p>
+                <p className="text-gray-400 text-sm">
+                  {isChampions
+                    ? 'Disfruta el partido en los mejores locales de Quito con promociones exclusivas solo por JapiNait.'
+                    : 'Vive el Mundial en los mejores locales de Quito con promociones exclusivas solo por JapiNait.'}
+                </p>
               </div>
             </div>
           )}
@@ -195,7 +288,6 @@ export default function Home() {
     <div className="min-h-screen bg-[#0d0d0d] pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
-        {/* HEADER */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
           <div className="flex items-center justify-between">
             <div>
@@ -208,7 +300,6 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* SEARCH */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="relative mb-5">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -220,7 +311,6 @@ export default function Home() {
           />
         </motion.div>
 
-        {/* FILTROS PILL */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
           className="flex gap-2 overflow-x-auto pb-2 mb-6" style={{ scrollbarWidth: 'none' }}>
           <PillFilter active={selectedType === 'all'} onClick={() => setSelectedType('all')}>Todos</PillFilter>
@@ -231,7 +321,6 @@ export default function Home() {
           ))}
         </motion.div>
 
-        {/* MODO FILTRADO */}
         {isFiltering ? (
           <section>
             <p className="text-gray-500 text-sm mb-4">
@@ -266,25 +355,77 @@ export default function Home() {
           </section>
         ) : (
           <>
-            {/* BANNER RUTA DEL PARTIDO */}
-            {/* BANNER RUTA DEL PARTIDO — imagen real */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
-              onClick={() => setShowRuta(true)}
-            >
-              <img
-                src="/banner-ruta.jpeg"
-                alt="Ruta del Partido - Final Champions League"
-                className="w-full object-cover rounded-2xl"
-                style={{ maxHeight: 200 }}
-              />
-              
-            </motion.div>
+            {eventPhase === 'champions' ? (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
+                  className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
+                  onClick={() => setShowRuta(true)}
+                >
+                  <img src="/banner-ruta.jpeg" alt="Final Champions League"
+                    className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
+                </motion.div>
 
-            {/* RECOMENDADO POR */}
+                <section className="mb-7">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
+                    <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
+                      Ver todas <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <button onClick={() => setShowRuta(true)}
+                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
+                    <div className="w-16 h-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
+                      <span className="text-3xl">⚽</span>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-white font-bold text-sm">Final Champions League</p>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Top</span>
+                      </div>
+                      <p className="text-gray-400 text-xs">PSG vs Arsenal</p>
+                      <p className="text-gray-600 text-xs mt-0.5">Sábado 31 de mayo • 15:00</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  </button>
+                </section>
+              </>
+            ) : (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
+                  className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
+                  onClick={() => setShowRuta(true)}
+                >
+                  <BannerMundial className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
+                </motion.div>
+
+                <section className="mb-7">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
+                    <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
+                      Ver todas <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <button onClick={() => setShowRuta(true)}
+                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
+                    <div className="w-16 h-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
+                      <span className="text-3xl">🌍</span>
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-white font-bold text-sm">Ruta del Mundial 2026</p>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Nuevo</span>
+                      </div>
+                      <p className="text-gray-400 text-xs">Los mejores locales de Quito</p>
+                      <p className="text-gray-600 text-xs mt-0.5">Próximamente</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  </button>
+                </section>
+              </>
+            )}
+
             <section className="mb-7">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-white font-bold text-base">Recomendado por...</h2>
@@ -296,9 +437,7 @@ export default function Home() {
                 {CURATORS.map((c) => (
                   <button key={c.id} onClick={() => setActiveCurator(c.id)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                      activeCurator === c.id
-                        ? 'bg-[#7928ca] text-white'
-                        : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]'
+                      activeCurator === c.id ? 'bg-[#7928ca] text-white' : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]'
                     }`}>
                     <span>{c.emoji}</span> {c.label}
                   </button>
@@ -318,39 +457,6 @@ export default function Home() {
               </div>
             </section>
 
-            {/* EVENTOS CERCA DE TI */}
-            <section className="mb-7">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
-                <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
-                  Ver todas <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-              <button
-                onClick={() => setShowRuta(true)}
-                className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors"
-              >
-                {/* Thumb con logos */}
-                <div className="relative w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
-                  <img src={UCL_LOGO} alt="UCL" className="absolute w-10 h-10 object-contain brightness-0 invert opacity-20" />
-                  <div className="relative flex items-center gap-0.5">
-                    <img src={PSG_LOGO} alt="PSG" className="w-6 h-6 object-contain" />
-                    <img src={ARSENAL_LOGO} alt="Arsenal" className="w-6 h-6 object-contain" />
-                  </div>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-white font-bold text-sm">Final Champions League</p>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Top</span>
-                  </div>
-                  <p className="text-gray-400 text-xs">PSG vs Arsenal</p>
-                  <p className="text-gray-600 text-xs mt-0.5">Sábado 31 de mayo • 15:00</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-              </button>
-            </section>
-
-            {/* TODOS LOS LOCALES */}
             <section ref={allVenuesRef} className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -360,9 +466,7 @@ export default function Home() {
                 {venues.length > 4 && (
                   <button onClick={showAllVenues ? handleOcultarTodos : handleVerTodos}
                     className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
-                    {showAllVenues
-                      ? <><ChevronUp className="w-3 h-3" /> Ocultar</>
-                      : <>Ver todos <ChevronRight className="w-3 h-3" /></>}
+                    {showAllVenues ? <><ChevronUp className="w-3 h-3" /> Ocultar</> : <>Ver todos <ChevronRight className="w-3 h-3" /></>}
                   </button>
                 )}
               </div>
@@ -412,7 +516,6 @@ export default function Home() {
           </>
         )}
 
-        {/* FOOTER */}
         <div className="text-center pt-8 mt-4 border-t border-[#1a1a1a]">
           <p className="text-gray-700 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
           <div className="flex items-center justify-center gap-4">
@@ -433,7 +536,6 @@ export default function Home() {
   );
 }
 
-// ── Fila de local en la ruta ──────────────────────────────
 function RutaVenueRow({ venue, index }) {
   const imageUrl = venue.primary_photo || null;
   return (
@@ -467,9 +569,7 @@ function PillFilter({ active, onClick, children }) {
   return (
     <button onClick={onClick}
       className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-        active
-          ? 'bg-white text-black'
-          : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#7928ca] hover:text-white'
+        active ? 'bg-white text-black' : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#7928ca] hover:text-white'
       }`}>
       {children}
     </button>
