@@ -132,47 +132,13 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Banner Champions */}
-          <div className="relative rounded-2xl overflow-hidden mb-6"
-            style={{ background: 'linear-gradient(160deg, #0a0520 0%, #160830 35%, #0c1535 70%, #080d20 100%)', minHeight: 180 }}>
-            {/* Glows */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-[#7928ca]/30 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-1/4 w-40 h-24 bg-[#ff0080]/20 rounded-full blur-2xl" />
-              <div className="absolute bottom-0 right-1/4 w-40 h-24 bg-[#3b5bdb]/25 rounded-full blur-2xl" />
-            </div>
-
-            <div className="relative z-10 p-5 flex flex-col items-center text-center">
-              {/* UCL Logo + título */}
-              <div className="flex items-center gap-2 mb-3">
-                <img src={UCL_LOGO} alt="UCL" className="w-7 h-7 object-contain brightness-0 invert opacity-80" />
-                <div className="text-left">
-                  <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest leading-none">Ruta del Partido</p>
-                  <p className="text-white font-black text-xs uppercase tracking-wide leading-tight">Final Champions League</p>
-                </div>
-              </div>
-
-              {/* Equipos */}
-              <div className="flex items-center gap-5 my-2">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center p-1">
-                    <img src={PSG_LOGO} alt="PSG" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-white text-xs font-bold">PSG</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="text-white/30 text-xs uppercase tracking-widest font-bold">vs</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center p-1">
-                    <img src={ARSENAL_LOGO} alt="Arsenal" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-white text-xs font-bold">Arsenal</span>
-                </div>
-              </div>
-
-              <p className="text-white/40 text-[11px] font-semibold tracking-widest mt-1">31 MAYO • 15:00</p>
-            </div>
+          {/* Banner Champions — imagen real */}
+          <div className="relative rounded-2xl overflow-hidden mb-6">
+            <img
+              src="/banner-ruta.jpeg"
+              alt="Ruta del Partido - Final Champions League"
+              className="w-full object-cover rounded-2xl"
+            />
           </div>
 
           {/* Lista locales ruta */}
@@ -305,55 +271,27 @@ export default function Home() {
         ) : (
           <>
             {/* BANNER RUTA DEL PARTIDO */}
+            {/* BANNER RUTA DEL PARTIDO — imagen real */}
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4 }}
               className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
-              style={{ background: 'linear-gradient(160deg, #0a0520 0%, #160830 35%, #0c1535 70%, #080d20 100%)' }}
               onClick={() => setShowRuta(true)}
             >
-              {/* Glows de fondo */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-72 h-36 bg-[#7928ca]/25 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-48 h-32 bg-[#3b5bdb]/20 rounded-full blur-2xl" />
-                <div className="absolute bottom-0 right-0 w-40 h-28 bg-[#ff0080]/15 rounded-full blur-2xl" />
-              </div>
-
-              <div className="relative z-10 p-5">
-                {/* Top label */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    <img src={UCL_LOGO} alt="UCL" className="w-full h-full object-contain brightness-0 invert opacity-70" />
-                  </div>
-                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest">JapiNait</span>
-                </div>
-
-                {/* Título */}
-                <div className="mb-3">
-                  <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-0.5">Ruta del Partido</p>
-                  <h3 className="text-white text-xl font-black uppercase leading-tight">Final Champions League</h3>
-                </div>
-
-                {/* Equipos con logos reales */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center p-1 flex-shrink-0">
-                    <img src={PSG_LOGO} alt="PSG" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-white/30 text-xs font-bold uppercase tracking-widest">VS</span>
-                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center p-1 flex-shrink-0">
-                    <img src={ARSENAL_LOGO} alt="Arsenal" className="w-full h-full object-contain" />
-                  </div>
-                  <div className="ml-1">
-                    <p className="text-white/40 text-[10px] font-semibold uppercase tracking-wider">31 MAY • 15:00</p>
-                  </div>
-                </div>
-
-                {/* CTA */}
+              <img
+                src="/banner-ruta.jpeg"
+                alt="Ruta del Partido - Final Champions League"
+                className="w-full object-cover rounded-2xl"
+                style={{ maxHeight: 200 }}
+              />
+              {/* Overlay oscuro sutil para el botón */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-2xl" />
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowRuta(true); }}
-                  className="px-5 py-2 rounded-full text-sm font-bold text-black bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition-colors"
-                  style={{ background: 'linear-gradient(90deg, #7928ca, #9b59b6)' }}
+                  className="px-8 py-2.5 rounded-full text-sm font-bold text-white shadow-lg"
+                  style={{ background: 'linear-gradient(90deg, #7928ca, #5b21b6)' }}
                 >
                   VER RUTA
                 </button>
