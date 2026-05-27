@@ -285,17 +285,7 @@ export default function Home() {
                 className="w-full object-cover rounded-2xl"
                 style={{ maxHeight: 200 }}
               />
-              {/* Overlay oscuro sutil para el botón */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-2xl" />
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowRuta(true); }}
-                  className="px-8 py-2.5 rounded-full text-sm font-bold text-white shadow-lg"
-                  style={{ background: 'linear-gradient(90deg, #7928ca, #5b21b6)' }}
-                >
-                  VER RUTA
-                </button>
-              </div>
+              
             </motion.div>
 
             {/* RECOMENDADO POR */}
