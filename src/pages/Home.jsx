@@ -13,9 +13,9 @@ const CURATORS = [
 
 // ── Fechas de expiración ──────────────────────────────────
 // El evento Champions expira el 1 de junio a las 00:00 (hora local)
-const CHAMPIONS_EXPIRY = new Date('2025-06-01T00:00:00');
+const CHAMPIONS_EXPIRY = new Date('2026-06-01T00:00:00');
 // Aquí pon la fecha en que quieres mostrar el banner del Mundial
-const MUNDIAL_START = new Date('2025-06-01T00:00:00');
+const MUNDIAL_START = new Date('2026-06-01T00:00:00');
 
 // Fallback para cuando banner-mundial.jpeg aún no existe en /public
 function BannerMundial({ className = '', style = {}, onClick }) {
