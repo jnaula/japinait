@@ -11,46 +11,21 @@ const CURATORS = [
   { id: 'influencers', label: 'Influencers', emoji: '📸' },
 ];
 
-// ── Fechas de expiración ──────────────────────────────────
-// El evento Champions expira el 1 de junio a las 00:00 (hora local)
 const CHAMPIONS_EXPIRY = new Date('2026-06-01T00:00:00');
-// Aquí pon la fecha en que quieres mostrar el banner del Mundial
-const MUNDIAL_START = new Date('2026-06-01T00:00:00');
 
-// Fallback para cuando banner-mundial.jpeg aún no existe en /public
 function BannerMundial({ className = '', style = {}, onClick }) {
   const [hasImage, setHasImage] = React.useState(true);
-
   if (hasImage) {
     return (
-      <img
-        src="/banner-mundial.jpeg"
-        alt="Ruta del Mundial"
-        className={className}
-        style={style}
-        onError={() => setHasImage(false)}
-        onClick={onClick}
-      />
+      <img src="/banner-mundial.jpeg" alt="Ruta del Mundial" className={className} style={style}
+        onError={() => setHasImage(false)} onClick={onClick} />
     );
   }
-
-  // Gradiente placeholder hasta que exista el banner
   return (
-    <div
-      onClick={onClick}
-      className={className}
-      style={{
-        ...style,
-        background: 'linear-gradient(135deg, #0c2c0c 0%, #0c1535 50%, #1a0a2e 100%)',
-        minHeight: 140,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        cursor: onClick ? 'pointer' : 'default',
-      }}
-    >
+    <div onClick={onClick} className={className}
+      style={{ ...style, background: 'linear-gradient(135deg, #0c2c0c 0%, #0c1535 50%, #1a0a2e 100%)',
+        minHeight: 140, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', gap: 8, cursor: onClick ? 'pointer' : 'default' }}>
       <span style={{ fontSize: 40 }}>🌍⚽</span>
       <p style={{ color: 'white', fontWeight: 700, fontSize: 15, margin: 0 }}>Ruta del Mundial 2026</p>
       <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: 0 }}>Próximamente</p>
@@ -59,15 +34,14 @@ function BannerMundial({ className = '', style = {}, onClick }) {
 }
 
 function getEventPhase() {
-  const now = new Date();
-  if (now < CHAMPIONS_EXPIRY) return 'champions';
-  // Cambia esta fecha si el Mundial empieza más tarde
-  return 'mundial';
+  return new Date() < CHAMPIONS_EXPIRY ? 'champions' : 'mundial';
 }
 
 export default function Home() {
   const [venues, setVenues] = useState([]);
   const [rutaVenues, setRutaVenues] = useState([]);
+  const [rutaPromos, setRutaPromos] = useState([]); // ✅ promos de la ruta
+  const [loadingPromos, setLoadingPromos] = useState(false); // ✅
   const [venueTypes, setVenueTypes] = useState([]);
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -78,39 +52,23 @@ export default function Home() {
   const [rutaTab, setRutaTab] = useState('ruta');
   const scrollRef = useRef(null);
   const allVenuesRef = useRef(null);
-
   const eventPhase = getEventPhase();
 
-  // ── Historia del navegador para botón atrás del teléfono ──
   useEffect(() => {
-    if (showRuta) {
-      // Empuja un nuevo estado cuando se abre la ruta
-      window.history.pushState({ rutaOpen: true }, '');
-    }
+    if (showRuta) window.history.pushState({ rutaOpen: true }, '');
   }, [showRuta]);
 
   useEffect(() => {
-    const handlePopState = (e) => {
-      // El usuario pulsó el botón atrás nativo
-      if (showRuta) {
-        setShowRuta(false);
-        setRutaTab('ruta');
-      }
+    const handlePopState = () => {
+      if (showRuta) { setShowRuta(false); setRutaTab('ruta'); }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [showRuta]);
 
-  // ── Cerrar la ruta también limpia el estado del historial ──
   const handleCloseRuta = () => {
-    // Si el estado actual es el que nosotros pusimos, volvemos atrás
-    // para que el historial quede limpio
-    if (window.history.state?.rutaOpen) {
-      window.history.back();
-    } else {
-      setShowRuta(false);
-      setRutaTab('ruta');
-    }
+    if (window.history.state?.rutaOpen) window.history.back();
+    else { setShowRuta(false); setRutaTab('ruta'); }
   };
 
   useEffect(() => {
@@ -118,14 +76,19 @@ export default function Home() {
     fetchVenues();
   }, []);
 
+  // ✅ Cargar promos cuando se abre la pestaña Promos
+  useEffect(() => {
+    if (rutaTab === 'promos' && rutaPromos.length === 0 && rutaVenues.length > 0) {
+      fetchRutaPromos();
+    }
+  }, [rutaTab, rutaVenues]);
+
   const fetchVenueTypes = async () => {
     try {
       const { data, error } = await supabase.from('venue_types').select('*').order('name');
       if (error) throw error;
       setVenueTypes(data || []);
-    } catch (err) {
-      console.error('Home: Error fetching venue types:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const fetchVenues = async () => {
@@ -150,10 +113,29 @@ export default function Home() {
       const shuffled = [...processedVenues].sort(() => Math.random() - 0.5);
       setVenues(shuffled);
       setRutaVenues(processedVenues.filter((v) => v.is_ruta_partido));
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
+
+  // ✅ Fetch promos de los locales de la ruta
+  const fetchRutaPromos = async () => {
+    setLoadingPromos(true);
+    try {
+      const venueIds = rutaVenues.map((v) => v.id);
+      if (venueIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('promotions')
+        .select('*, venues(name, venue_photos(photo_url, is_primary))')
+        .in('venue_id', venueIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setRutaPromos(data || []);
     } catch (err) {
-      console.error('Home: Error fetching venues:', err);
+      console.error('Error fetching ruta promos:', err);
     } finally {
-      setLoading(false);
+      setLoadingPromos(false);
     }
   };
 
@@ -192,11 +174,7 @@ export default function Home() {
         {/* Header */}
         <div className="sticky top-0 z-20 bg-[#0d0d0d]/95 backdrop-blur-md border-b border-white/5 px-4 py-3">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
-            {/* Botón volver — también funciona con el back del teléfono */}
-            <button
-              onClick={handleCloseRuta}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-            >
+            <button onClick={handleCloseRuta} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Volver</span>
             </button>
@@ -213,15 +191,12 @@ export default function Home() {
           {/* Tabs */}
           <div className="flex border-b border-white/10 mb-5">
             {['ruta', 'promos', 'info'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setRutaTab(tab)}
+              <button key={tab} onClick={() => setRutaTab(tab)}
                 className={`px-5 py-2.5 text-sm font-semibold capitalize transition-all border-b-2 -mb-px ${
                   rutaTab === tab
                     ? 'text-[#7928ca] border-[#7928ca]'
                     : 'text-gray-500 border-transparent hover:text-gray-300'
-                }`}
-              >
+                }`}>
                 {tab === 'ruta' ? 'Ruta' : tab === 'promos' ? 'Promos' : 'Info'}
               </button>
             ))}
@@ -230,17 +205,13 @@ export default function Home() {
           {/* Banner */}
           <div className="relative rounded-2xl overflow-hidden mb-6">
             {isChampions ? (
-              <img
-                src="/banner-ruta.jpeg"
-                alt="Ruta del Partido - Final Champions League"
-                className="w-full object-cover rounded-2xl"
-              />
+              <img src="/banner-ruta.jpeg" alt="Ruta del Partido" className="w-full object-cover rounded-2xl" />
             ) : (
               <BannerMundial className="w-full object-cover rounded-2xl" />
             )}
           </div>
 
-          {/* Lista locales ruta */}
+          {/* TAB: RUTA */}
           {rutaTab === 'ruta' && (
             rutaVenues.length === 0 ? (
               <div className="text-center py-16">
@@ -248,21 +219,12 @@ export default function Home() {
                   <span className="text-3xl">{isChampions ? '🏆' : '🌍'}</span>
                 </div>
                 <p className="text-white font-semibold mb-1">Próximamente</p>
-                <p className="text-gray-500 text-sm">
-                  {isChampions
-                    ? 'Los locales de la ruta se anunciarán pronto'
-                    : 'Los locales del Mundial se anunciarán pronto'}
-                </p>
+                <p className="text-gray-500 text-sm">Los locales de la ruta se anunciarán pronto</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {rutaVenues.map((venue, i) => (
-                  <motion.div
-                    key={venue.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                  >
+                  <motion.div key={venue.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                     <RutaVenueRow venue={venue} index={i} />
                   </motion.div>
                 ))}
@@ -270,13 +232,70 @@ export default function Home() {
             )
           )}
 
+          {/* ✅ TAB: PROMOS */}
           {rutaTab === 'promos' && (
-            <div className="text-center py-12">
-              <Tag className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">Las promociones se anunciarán pronto</p>
-            </div>
+            loadingPromos ? (
+              <div className="flex justify-center py-16">
+                <div className="w-10 h-10 border-4 border-[#7928ca] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : rutaPromos.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 rounded-2xl bg-[#7928ca]/10 border border-[#7928ca]/20 flex items-center justify-center mx-auto mb-3">
+                  <Tag className="w-7 h-7 text-[#7928ca]/50" />
+                </div>
+                <p className="text-white font-semibold mb-1">Sin promociones aún</p>
+                <p className="text-gray-500 text-sm">Las promos de la ruta se anunciarán pronto</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rutaPromos.map((promo, i) => {
+                  // Imagen del local
+                  const primaryPhoto = promo.venues?.venue_photos?.find((p) => p.is_primary);
+                  const photoPath = primaryPhoto?.photo_url || promo.venues?.venue_photos?.[0]?.photo_url;
+                  const imageUrl = photoPath
+                    ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
+                    : null;
+
+                  return (
+                    <motion.div key={promo.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex items-start gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#7928ca]/40 transition-colors"
+                    >
+                      {/* Ícono/imagen del local */}
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={promo.venues?.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #7928ca33, #ff008033)' }}>
+                          <Tag className="w-5 h-5 text-[#7928ca]" />
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        {/* Nombre del local */}
+                        <p className="text-gray-500 text-xs mb-0.5 truncate">{promo.venues?.name}</p>
+                        {/* Título de la promo */}
+                        <p className="text-white font-bold text-sm mb-1">{promo.title}</p>
+                        {/* Descripción */}
+                        {promo.description && (
+                          <p className="text-gray-400 text-xs leading-relaxed whitespace-pre-line">{promo.description}</p>
+                        )}
+                        {/* Badge promo */}
+                        <div className="mt-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
+                            style={{ background: 'linear-gradient(90deg, #7928ca, #ff0080)' }}>
+                            <Tag className="w-3 h-3" /> Promo exclusiva
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )
           )}
 
+          {/* TAB: INFO */}
           {rutaTab === 'info' && (
             <div className="rounded-2xl bg-[#161616] border border-[#222] p-5 space-y-4">
               {isChampions ? (
@@ -326,32 +345,21 @@ export default function Home() {
     <div className="min-h-screen bg-[#0d0d0d] pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
-        {/* HEADER */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-xs mb-0.5">¡Listo para salir?</p>
-              <h1 className="text-2xl font-extrabold text-white leading-tight">
-                Descubre los mejores<br />
-                lugares en <span className="text-[#7928ca]">Quito</span>
-              </h1>
-            </div>
-          </div>
+          <p className="text-gray-500 text-xs mb-0.5">¡Listo para salir?</p>
+          <h1 className="text-2xl font-extrabold text-white leading-tight">
+            Descubre los mejores<br />
+            lugares en <span className="text-[#7928ca]">Quito</span>
+          </h1>
         </motion.div>
 
-        {/* SEARCH */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="relative mb-5">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Buscar bares, fiestas, eventos..."
-            value={searchQuery}
+          <input type="text" placeholder="Buscar bares, fiestas, eventos..." value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-[#7928ca] transition-colors text-sm"
-          />
+            className="w-full pl-10 pr-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-[#7928ca] transition-colors text-sm" />
         </motion.div>
 
-        {/* FILTROS PILL */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
           className="flex gap-2 overflow-x-auto pb-2 mb-6" style={{ scrollbarWidth: 'none' }}>
           <PillFilter active={selectedType === 'all'} onClick={() => setSelectedType('all')}>Todos</PillFilter>
@@ -362,7 +370,6 @@ export default function Home() {
           ))}
         </motion.div>
 
-        {/* MODO FILTRADO */}
         {isFiltering ? (
           <section>
             <p className="text-gray-500 text-sm mb-4">
@@ -397,27 +404,13 @@ export default function Home() {
           </section>
         ) : (
           <>
-            {/* ── BANNER + EVENTO CERCA DE TI ── */}
-            {/* Se muestran siempre; después del 31/5 cambian al Mundial */}
             {eventPhase === 'champions' ? (
               <>
-                {/* Banner Champions */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }}
-                  className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
-                  onClick={() => setShowRuta(true)}
-                >
-                  <img
-                    src="/banner-ruta.jpeg"
-                    alt="Ruta del Partido - Final Champions League"
-                    className="w-full object-cover rounded-2xl"
-                    style={{ maxHeight: 200 }}
-                  />
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }} className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
+                  onClick={() => setShowRuta(true)}>
+                  <img src="/banner-ruta.jpeg" alt="Ruta del Partido" className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
                 </motion.div>
-
-                {/* Evento cerca de ti — Champions */}
                 <section className="mb-7">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
@@ -425,11 +418,8 @@ export default function Home() {
                       Ver todas <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <button
-                    onClick={() => setShowRuta(true)}
-                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors"
-                  >
-                    {/* Thumb con emoji ⚽ */}
+                  <button onClick={() => setShowRuta(true)}
+                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
                     <div className="relative w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
                       <span className="text-3xl">⚽</span>
                     </div>
@@ -447,21 +437,11 @@ export default function Home() {
               </>
             ) : (
               <>
-                {/* Banner Mundial */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }}
-                  className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
-                  onClick={() => setShowRuta(true)}
-                >
-                  <BannerMundial
-                    className="w-full object-cover rounded-2xl"
-                    style={{ maxHeight: 200 }}
-                  />
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }} className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
+                  onClick={() => setShowRuta(true)}>
+                  <BannerMundial className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
                 </motion.div>
-
-                {/* Evento cerca de ti — Mundial */}
                 <section className="mb-7">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
@@ -469,11 +449,9 @@ export default function Home() {
                       Ver todas <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <button
-                    onClick={() => setShowRuta(true)}
-                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors"
-                  >
-                    <div className="relative w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
+                  <button onClick={() => setShowRuta(true)}
+                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
+                    <div className="w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
                       <span className="text-3xl">🌍</span>
                     </div>
                     <div className="flex-1 text-left">
@@ -490,7 +468,6 @@ export default function Home() {
               </>
             )}
 
-            {/* RECOMENDADO POR */}
             <section className="mb-7">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-white font-bold text-base">Recomendado por...</h2>
@@ -502,9 +479,7 @@ export default function Home() {
                 {CURATORS.map((c) => (
                   <button key={c.id} onClick={() => setActiveCurator(c.id)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                      activeCurator === c.id
-                        ? 'bg-[#7928ca] text-white'
-                        : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]'
+                      activeCurator === c.id ? 'bg-[#7928ca] text-white' : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]'
                     }`}>
                     <span>{c.emoji}</span> {c.label}
                   </button>
@@ -524,7 +499,6 @@ export default function Home() {
               </div>
             </section>
 
-            {/* TODOS LOS LOCALES */}
             <section ref={allVenuesRef} className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -586,7 +560,6 @@ export default function Home() {
           </>
         )}
 
-        {/* FOOTER */}
         <div className="text-center pt-8 mt-4 border-t border-[#1a1a1a]">
           <p className="text-gray-700 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
           <div className="flex items-center justify-center gap-4">
@@ -607,15 +580,12 @@ export default function Home() {
   );
 }
 
-// ── Fila de local en la ruta ──────────────────────────────
 function RutaVenueRow({ venue, index }) {
   const navigate = useNavigate();
   const imageUrl = venue.primary_photo || null;
   return (
-    <div
-      onClick={() => navigate(`/venue/${venue.id}`)}
-      className="flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/40 transition-colors cursor-pointer"
-    >
+    <div onClick={() => navigate(`/venue/${venue.id}`)}
+      className="flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/40 transition-colors cursor-pointer">
       <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
         style={{ background: 'linear-gradient(135deg, #7928ca, #ff0080)' }}>
         {index + 1}
@@ -630,11 +600,6 @@ function RutaVenueRow({ venue, index }) {
       <div className="flex-1 min-w-0">
         <p className="text-white font-semibold text-sm truncate">{venue.name}</p>
         <p className="text-gray-500 text-xs truncate">{venue.address}</p>
-        {venue.promotions?.[0] && (
-          <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-[#7928ca]/60">
-            Promo {venue.promotions[0].title}
-          </span>
-        )}
       </div>
       <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
     </div>
@@ -645,9 +610,7 @@ function PillFilter({ active, onClick, children }) {
   return (
     <button onClick={onClick}
       className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-        active
-          ? 'bg-white text-black'
-          : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#7928ca] hover:text-white'
+        active ? 'bg-white text-black' : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#7928ca] hover:text-white'
       }`}>
       {children}
     </button>
