@@ -306,7 +306,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Fecha y hora</p>
-                    <p className="text-white font-semibold">Sábado 31 de mayo • 15:00</p>
+                    <p className="text-white font-semibold">Sábado 30 de mayo • 15:00</p>
                   </div>
                   <div>
                     <p className="text-[#7928ca] text-xs font-bold uppercase tracking-widest mb-1">Partido</p>
@@ -429,7 +429,7 @@ export default function Home() {
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Top</span>
                       </div>
                       <p className="text-gray-400 text-xs">PSG vs Arsenal</p>
-                      <p className="text-gray-600 text-xs mt-0.5">Sábado 31 de mayo • 15:00</p>
+                      <p className="text-gray-600 text-xs mt-0.5">Sábado 30 de mayo • 15:00</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
                   </button>

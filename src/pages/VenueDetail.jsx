@@ -290,7 +290,7 @@ export default function VenueDetail() {
               <Trophy className="w-4 h-4 text-yellow-400" />
               <span className="text-yellow-400 text-xs font-bold uppercase tracking-widest">Ruta del Partido</span>
               <span className="text-white/40 text-xs">·</span>
-              <span className="text-white/60 text-xs">PSG vs Arsenal · 31 Mayo</span>
+              <span className="text-white/60 text-xs">PSG vs Arsenal · 30 Mayo</span>
             </div>
             <span className="text-xl">⚽</span>
           </div>
