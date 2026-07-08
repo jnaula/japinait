@@ -380,21 +380,6 @@ export default function VenueDetail() {
           {isLicoreria ? (
             <div className="space-y-6">
 
-              {/* Info básica */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
-                {hasHours && (
-                  <button onClick={() => setShowHours(true)}
-                    className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors w-full text-left">
-                    <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
-                    <div>
-                      <p className="text-gray-500 text-sm">Horario de Atención</p>
-                      <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
-                    </div>
-                  </button>
-                )}
-              </div>
-
               {/* Descripción */}
               {venue.description && (
                 <div className="text-gray-300 text-base space-y-2">
@@ -404,14 +389,42 @@ export default function VenueDetail() {
                 </div>
               )}
 
+              {/* Estado abierto + delivery como badges inline */}
+              <div className="flex flex-wrap gap-2">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">
+                  <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
+                  Abierto ahora
+                </span>
+                {venue.has_delivery && (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7928ca]/10 border border-[#7928ca]/30 text-purple-300 text-sm font-medium">
+                    🛵 Delivery Disponible
+                  </span>
+                )}
+              </div>
+
+              {/* Promociones — bloque destacado */}
+              {promotions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#ff0080]">🔥 Promociones</p>
+                  {promotions.map((promo) => (
+                    <div key={promo.id} className="bg-[#0f0f0f] border border-[#ff0080]/20 rounded-xl p-4">
+                      <p className="text-white font-semibold">{promo.title}</p>
+                      {promo.description && (
+                        <p className="text-gray-400 text-sm mt-1 whitespace-pre-line">{promo.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Productos disponibles */}
               {venue.available_products?.length > 0 && (
-                <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-5">
-                  <p className="text-white font-bold mb-4">Productos disponibles</p>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">🍺 Productos</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {venue.available_products.map((product) => (
                       <div key={product}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-sm text-gray-200">
+                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#0f0f0f] border border-[#1a1a1a] text-sm text-gray-200">
                         <span>{PRODUCT_EMOJIS[product] || '📦'}</span>
                         <span>{product}</span>
                       </div>
@@ -420,16 +433,42 @@ export default function VenueDetail() {
                 </div>
               )}
 
-              {/* Delivery */}
-              {venue.has_delivery && (
-                <div className="bg-[#0f0f0f] border border-[#7928ca]/30 rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">🛵</span>
-                    <p className="text-white font-bold">Servicio de Delivery Disponible</p>
+              {/* Mapa */}
+              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">📍 Ubicación</p>
+                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                    <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
+                  </a>
+                </div>
+                <div className="w-full h-64 rounded-lg overflow-hidden">
+                  <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
+                    mapId="nerd-venue-detail-map"
+                    options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
+                    className="w-full h-full">
+                    <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
+                  </Map>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
+              </div>
+
+              {/* Horario */}
+              {hasHours && (
+                <button onClick={() => setShowHours(true)}
+                  className="w-full bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors text-left">
+                  <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
+                  <div>
+                    <p className="text-gray-500 text-xs uppercase tracking-widest">🕒 Horario</p>
+                    <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
                   </div>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Comunícate directamente con la licorería para realizar tu pedido.
-                  </p>
+                </button>
+              )}
+
+              {/* Teléfono / contacto */}
+              {(phoneClean || whatsappUrl) && (
+                <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4">
+                  <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">📱 Contacto</p>
                   <div className="flex gap-3 flex-wrap">
                     {phoneClean && (
                       <a href={`tel:${phoneClean}`}
@@ -447,39 +486,6 @@ export default function VenueDetail() {
                     )}
                   </div>
                 </div>
-              )}
-
-              {/* Mapa */}
-              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-5 h-5 text-[#ff0080]" />
-                    <h3 className="text-white font-bold">Ubicación</h3>
-                  </div>
-                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-medium hover:opacity-90 transition-opacity">
-                    <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
-                  </a>
-                </div>
-                <div className="w-full h-64 rounded-lg overflow-hidden">
-                  <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
-                    mapId="nerd-venue-detail-map"
-                    options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
-                    className="w-full h-full">
-                    <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
-                  </Map>
-                </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
-              </div>
-
-              {/* Promociones licorería */}
-              {promotions.length > 0 && (
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPromotions(true)}
-                  className="flex items-center space-x-2 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border border-[#ff0080]/30 text-white hover:border-[#ff0080]/60 transition-all">
-                  <Tag className="w-5 h-5 text-[#ff0080]" />
-                  <span className="font-semibold">Ver promociones</span>
-                  <span className="ml-1 px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">{promotions.length}</span>
-                </motion.button>
               )}
 
             </div>
