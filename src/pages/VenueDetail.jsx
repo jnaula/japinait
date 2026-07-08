@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Edit, ChevronLeft, ChevronRight, X, Tag, Trophy } from 'lucide-react';
+import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Edit, ChevronLeft, ChevronRight, X, Tag, Phone, MessageCircle } from 'lucide-react';
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
+
+const PRODUCT_EMOJIS = {
+  Cervezas: '🍺', Whisky: '🥃', Ron: '🍹', Vodka: '🍸', Vino: '🍷',
+  Tequila: '🥂', Aguardiente: '🌿', Energizantes: '⚡', Hielo: '🧊',
+  Snacks: '🍟', Cigarrillos: '🚬', Otros: '📦',
+};
 
 const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -116,6 +122,7 @@ export default function VenueDetail() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [showHours, setShowHours] = useState(false);
+
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -125,8 +132,8 @@ export default function VenueDetail() {
   const lightboxTouchStartX = useRef(null);
   const isOwner = user && venue && venue.owner_id === user.id;
 
-  // ✅ Detectar si es local de la ruta
-  const isRutaPartido = venue?.is_ruta_partido === true;
+  // Detecta licorería
+  const isLicoreria = venue?.venue_types?.name === 'Licorería';
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [id]);
   useEffect(() => { fetchVenueDetails(); }, [id]);
@@ -148,9 +155,10 @@ export default function VenueDetail() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [lightboxIndex, photoUrls.length]);
+
   useEffect(() => {
     if (user && reviews.length > 0) {
-      const existing = reviews.find(r => r.user_id === user.id);
+      const existing = reviews.find((r) => r.user_id === user.id);
       if (existing) { setUserExistingReview(existing); setUserRating(existing.rating); }
     }
   }, [user, reviews]);
@@ -223,7 +231,9 @@ export default function VenueDetail() {
     } catch (err) {
       console.error(err);
       alert('Error al guardar la calificación');
-    } finally { setSubmittingRating(false); }
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   const handleHeroTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
@@ -250,7 +260,7 @@ export default function VenueDetail() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#7928ca] border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-[#ff0080] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -274,36 +284,18 @@ export default function VenueDetail() {
   const displayRating = venue.average_rating > 0 ? venue.average_rating.toFixed(1) : avgRating;
   const displayReviews = venue.total_reviews || reviews.length;
 
+  // Helpers para licorería
+  const phoneClean = venue.phone?.replace(/\s/g, '') || '';
+  const whatsappClean = venue.whatsapp?.replace(/\s/g, '') || '';
+  const whatsappUrl = whatsappClean
+    ? `https://wa.me/${whatsappClean.replace('+', '')}`
+    : null;
+
   return (
-    <div className={`min-h-screen ${isRutaPartido ? 'bg-[#0d0d12]' : 'bg-[#0a0a0a]'}`}>
-
-      {/* ✅ BANNER RUTA DEL PARTIDO — solo si es local de la ruta */}
-      {isRutaPartido && (
-        <div className="relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0d1a3a 100%)', paddingTop: 'env(safe-area-inset-top)' }}>
-          {/* Luces de neón */}
-          <div className="absolute top-0 left-0 w-48 h-16 bg-[#7928ca]/30 rounded-full blur-3xl" />
-          <div className="absolute top-0 right-0 w-32 h-16 bg-[#ff0080]/20 rounded-full blur-2xl" />
-
-          <div className="relative z-10 px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-yellow-400" />
-              <span className="text-yellow-400 text-xs font-bold uppercase tracking-widest">Ruta del Partido</span>
-              <span className="text-white/40 text-xs">·</span>
-              <span className="text-white/60 text-xs">PSG vs Arsenal · 30 Mayo</span>
-            </div>
-            <span className="text-xl">⚽</span>
-          </div>
-        </div>
-      )}
+    <div className="min-h-screen bg-[#0a0a0a]">
 
       {/* HERO */}
-      <div
-        className={`relative overflow-hidden select-none ${isRutaPartido ? 'h-80' : 'h-96'}`}
-        style={isRutaPartido ? { background: '#0d0d12' } : { background: '#1a1a1a' }}
-        onTouchStart={handleHeroTouchStart}
-        onTouchEnd={handleHeroTouchEnd}
-      >
+      <div className="relative h-96 bg-[#1a1a1a] overflow-hidden select-none" onTouchStart={handleHeroTouchStart} onTouchEnd={handleHeroTouchEnd}>
         {photoUrls.length > 0 ? (
           <>
             <AnimatePresence mode="wait">
@@ -312,16 +304,6 @@ export default function VenueDetail() {
                 transition={{ duration: 0.25 }} onClick={() => setLightboxIndex(heroIndex)}
                 className="w-full h-full object-cover absolute inset-0 cursor-zoom-in" />
             </AnimatePresence>
-
-            {/* ✅ Overlay especial para locales de la ruta */}
-            {isRutaPartido && (
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(to bottom, rgba(10,10,26,0.3) 0%, transparent 40%, rgba(10,10,26,0.8) 100%)' }} />
-            )}
-            {!isRutaPartido && (
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none" />
-            )}
-
             {photoUrls.length > 1 && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); setHeroIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length); }}
@@ -335,228 +317,254 @@ export default function VenueDetail() {
                 <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
                   {photoUrls.map((_, i) => (
                     <button key={i} onClick={(e) => { e.stopPropagation(); setHeroIndex(i); }}
-                      className={`rounded-full transition-all ${i === heroIndex
-                        ? isRutaPartido ? 'bg-[#7928ca] scale-125 w-4 h-2' : 'bg-white scale-125 w-2 h-2'
-                        : 'bg-white/40 w-2 h-2'}`} />
+                      className={`w-2 h-2 rounded-full transition-all ${i === heroIndex ? 'bg-white scale-125' : 'bg-white/40'}`} />
                   ))}
+                </div>
+                <div className="absolute bottom-16 right-6 z-10 text-xs text-white/70 bg-black/40 px-2 py-1 rounded-full">
+                  {heroIndex + 1} / {photoUrls.length}
                 </div>
               </>
             )}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 text-xs text-white/50">Toca la foto para ampliar</div>
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center opacity-20"
-            style={{ background: isRutaPartido ? 'linear-gradient(135deg, #7928ca, #ff0080)' : 'linear-gradient(135deg, #ff0080, #7928ca)' }}>
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff0080] to-[#7928ca] opacity-20">
             <MapPin className="w-32 h-32 text-white" />
           </div>
         )}
-
-        {/* Botones hero */}
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-6 left-6 z-10">
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-sm text-white hover:bg-black/80">
-            <ArrowLeft className="w-4 h-4" /><span className="text-sm">Volver</span>
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-white hover:bg-black/70">
+            <ArrowLeft className="w-5 h-5" /><span>Volver</span>
           </motion.button>
         </div>
-        <div className="absolute top-4 right-4 flex items-center space-x-2 z-10">
+        <div className="absolute top-6 right-6 flex items-center space-x-2 z-10">
           {userRole === 'venue_admin' && isOwner && (
             <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => navigate(`/edit-venue/${venue.id}`)}
-              className="p-2.5 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-black/80">
-              <Edit className="w-5 h-5 text-white" />
+              className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70">
+              <Edit className="w-6 h-6 text-white" />  {/* Edit imported from lucide */}
             </motion.button>
           )}
           <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={toggleFavorite}
-            disabled={favoriteLoading} className="p-2.5 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-black/80 disabled:opacity-50">
-            <Heart className={`w-5 h-5 ${isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'}`} />
+            disabled={favoriteLoading} className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 disabled:opacity-50">
+            <Heart className={`w-6 h-6 ${isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'}`} />
           </motion.button>
         </div>
-
-        {/* ✅ Badge ruta sobre la foto */}
-        {isRutaPartido && (
-          <div className="absolute bottom-4 left-4 z-10">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border border-yellow-400/30"
-              style={{ background: 'rgba(0,0,0,0.6)' }}>
-              <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-              <span className="text-yellow-400 text-xs font-bold">En la Ruta</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* CONTENIDO */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
 
           {/* Nombre + rating */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1 mr-3">
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                <h1 className="text-3xl font-bold text-white">{venue.name}</h1>
-                {/* ✅ Badge ruta junto al nombre */}
-                {isRutaPartido && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold text-black"
-                    style={{ background: 'linear-gradient(90deg, #f5c518, #ff9500)' }}>
-                    <Trophy className="w-3 h-3" /> Ruta
-                  </span>
-                )}
-              </div>
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">{venue.name}</h1>
               {venue.venue_types && (
-                <span className={`inline-block px-3 py-1 rounded-full text-sm border ${
-                  isRutaPartido
-                    ? 'bg-[#7928ca]/20 text-[#a855f7] border-[#7928ca]/40'
-                    : 'bg-[#7928ca]/20 text-[#7928ca] border-[#7928ca]/30'
-                }`}>
+                <span className="inline-block px-3 py-1 rounded-full bg-[#7928ca]/20 text-[#7928ca] border border-[#7928ca]/30 text-sm">
                   {venue.venue_types.name}
                 </span>
               )}
             </div>
             {displayRating && (
-              <div className={`flex items-center space-x-1.5 rounded-xl px-3 py-2 border ${
-                isRutaPartido
-                  ? 'bg-[#1a1a2e] border-[#7928ca]/30'
-                  : 'bg-[#0f0f0f] border-[#1a1a1a]'
-              }`}>
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                <span className="text-lg font-bold text-white">{displayRating}</span>
-                <span className="text-gray-400 text-xs">({displayReviews})</span>
+              <div className="flex items-center space-x-2 bg-[#0f0f0f] border border-[#1a1a1a] rounded-lg px-4 py-2">
+                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                <span className="text-xl font-bold text-white">{displayRating}</span>
+                <span className="text-gray-400 text-sm">({displayReviews})</span>
               </div>
             )}
           </div>
 
-          {/* ✅ CARD PROMO RUTA — destaca la promo especial */}
-          {isRutaPartido && venue.ruta_promo && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="relative mb-5 rounded-2xl overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #1a0a2e 0%, #0d1a3a 100%)' }}
-            >
-              {/* Luces de fondo */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#7928ca]/20 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#ff0080]/10 rounded-full blur-2xl" />
+          {/* ── LAYOUT LICORERÍA ── */}
+          {isLicoreria ? (
+            <div className="space-y-6">
 
-              <div className="relative z-10 p-4 flex items-center gap-4">
-                {/* Ícono promo */}
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 border border-yellow-400/20"
-                  style={{ background: 'rgba(245,197,24,0.1)' }}>
-                  <span className="text-2xl">🍺</span>
+              {/* Info básica */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
+                {hasHours && (
+                  <button onClick={() => setShowHours(true)}
+                    className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors w-full text-left">
+                    <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
+                    <div>
+                      <p className="text-gray-500 text-sm">Horario de Atención</p>
+                      <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Descripción */}
+              {venue.description && (
+                <div className="text-gray-300 text-base space-y-2">
+                  {venue.description.split('\n').filter((l) => l.trim() !== '').map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-                    <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-widest">Promo Ruta del Partido</span>
+              )}
+
+              {/* Productos disponibles */}
+              {venue.available_products?.length > 0 && (
+                <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-5">
+                  <p className="text-white font-bold mb-4">Productos disponibles</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {venue.available_products.map((product) => (
+                      <div key={product}
+                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-sm text-gray-200">
+                        <span>{PRODUCT_EMOJIS[product] || '📦'}</span>
+                        <span>{product}</span>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-white font-bold text-lg leading-tight">{venue.ruta_promo}</p>
-                  <p className="text-gray-400 text-xs mt-0.5">Solo por JapiNait · Válido durante el partido</p>
                 </div>
-              </div>
-            </motion.div>
-          )}
+              )}
 
-          {/* Descripción */}
-          {venue.description && (
-            <div className="text-gray-300 text-base mb-5 space-y-2">
-              {venue.description.split('\n').filter((line) => line.trim() !== '').map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-          )}
-
-          {/* Calificación */}
-          {user && userRole !== 'venue_admin' && (
-            <div className={`mb-5 p-4 rounded-xl border ${
-              isRutaPartido
-                ? 'bg-[#1a1a2e] border-[#7928ca]/20'
-                : 'bg-[#0f0f0f] border-[#1a1a1a]'
-            }`}>
-              <p className="text-gray-300 text-sm font-medium mb-3">
-                {userExistingReview ? 'Tu calificación:' : '¿Cómo calificarías este local?'}
-              </p>
-              <div className="flex items-center space-x-2">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <motion.button key={value} type="button" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
-                    disabled={submittingRating}
-                    onMouseEnter={() => setHoverRating(value)}
-                    onMouseLeave={() => setHoverRating(0)}
-                    onClick={() => handleSubmitRating(value)}
-                    className="disabled:opacity-50">
-                    <Star className={`w-8 h-8 transition-colors ${
-                      value <= (hoverRating || userRating) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'
-                    }`} />
-                  </motion.button>
-                ))}
-                {submittingRating && <div className="w-5 h-5 border-2 border-[#7928ca] border-t-transparent rounded-full animate-spin ml-2" />}
-                {userExistingReview && !submittingRating && <span className="text-xs text-gray-500 ml-2">Toca para cambiar</span>}
-              </div>
-            </div>
-          )}
-
-          {/* Botón promociones generales */}
-          {promotions.length > 0 && (
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPromotions(true)}
-              className={`flex items-center space-x-2 mb-5 px-5 py-3 rounded-xl w-full border transition-all ${
-                isRutaPartido
-                  ? 'bg-[#7928ca]/10 border-[#7928ca]/30 hover:border-[#7928ca]/60'
-                  : 'bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border-[#ff0080]/30 hover:border-[#ff0080]/60'
-              }`}>
-              <Tag className={`w-5 h-5 ${isRutaPartido ? 'text-[#a855f7]' : 'text-[#ff0080]'}`} />
-              <span className="font-semibold text-white">Ver promociones</span>
-              <span className={`ml-auto px-2 py-0.5 rounded-full text-white text-xs font-bold ${
-                isRutaPartido ? 'bg-[#7928ca]' : 'bg-[#ff0080]'
-              }`}>{promotions.length}</span>
-            </motion.button>
-          )}
-
-          {/* Mapa */}
-          <div className={`mb-6 rounded-xl p-4 overflow-hidden border ${
-            isRutaPartido ? 'bg-[#1a1a2e] border-[#7928ca]/20' : 'bg-[#0f0f0f] border-[#1a1a1a]'
-          }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <MapPin className={`w-5 h-5 ${isRutaPartido ? 'text-[#a855f7]' : 'text-[#ff0080]'}`} />
-                <h3 className="text-white font-bold">Ubicación</h3>
-              </div>
-              <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                style={{ background: isRutaPartido ? 'linear-gradient(90deg, #7928ca, #ff0080)' : 'linear-gradient(90deg, #ff0080, #7928ca)' }}>
-                <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
-              </a>
-            </div>
-            <div className="w-full h-56 rounded-lg overflow-hidden">
-              <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
-                mapId="nerd-venue-detail-map"
-                options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
-                className="w-full h-full">
-                <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
-              </Map>
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
-          </div>
-
-          {/* Info cards */}
-          <div className="grid md:grid-cols-2 gap-3 mb-6">
-            <InfoCard icon={MapPin} label="Dirección" value={venue.address} isRuta={isRutaPartido} />
-            {venue.price_range && (
-              <InfoCard icon={DollarSign} label="Rango de Precios"
-                value={{ '$': 'Económico ($)', '$$': 'Medio ($$)', '$$$': 'Alto ($$$)' }[venue.price_range] || venue.price_range}
-                isRuta={isRutaPartido} />
-            )}
-            {venue.music_type && <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} isRuta={isRutaPartido} />}
-            {hasHours && (
-              <button onClick={() => setShowHours(true)}
-                className={`rounded-xl p-4 flex items-center space-x-3 transition-colors w-full text-left border ${
-                  isRutaPartido
-                    ? 'bg-[#1a1a2e] border-[#7928ca]/20 hover:border-[#7928ca]/50'
-                    : 'bg-[#0f0f0f] border-[#1a1a1a] hover:border-[#ff0080]/40'
-                }`}>
-                <Clock className={`w-5 h-5 flex-shrink-0 ${isRutaPartido ? 'text-[#a855f7]' : 'text-[#ff0080]'}`} />
-                <div>
-                  <p className="text-gray-500 text-sm">Horario de Atención</p>
-                  <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
+              {/* Delivery */}
+              {venue.has_delivery && (
+                <div className="bg-[#0f0f0f] border border-[#7928ca]/30 rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">🛵</span>
+                    <p className="text-white font-bold">Servicio de Delivery Disponible</p>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Comunícate directamente con la licorería para realizar tu pedido.
+                  </p>
+                  <div className="flex gap-3 flex-wrap">
+                    {phoneClean && (
+                      <a href={`tel:${phoneClean}`}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#7928ca]/50 transition-colors text-white text-sm font-medium">
+                        <Phone className="w-4 h-4 text-[#ff0080]" />
+                        Llamar
+                      </a>
+                    )}
+                    {whatsappUrl && (
+                      <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25d366]/10 border border-[#25d366]/30 hover:border-[#25d366]/60 transition-colors text-white text-sm font-medium">
+                        <MessageCircle className="w-4 h-4 text-[#25d366]" />
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </button>
-            )}
-          </div>
+              )}
+
+              {/* Mapa */}
+              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-[#ff0080]" />
+                    <h3 className="text-white font-bold">Ubicación</h3>
+                  </div>
+                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                    <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
+                  </a>
+                </div>
+                <div className="w-full h-64 rounded-lg overflow-hidden">
+                  <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
+                    mapId="nerd-venue-detail-map"
+                    options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
+                    className="w-full h-full">
+                    <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
+                  </Map>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
+              </div>
+
+              {/* Promociones licorería */}
+              {promotions.length > 0 && (
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPromotions(true)}
+                  className="flex items-center space-x-2 w-full px-5 py-3 rounded-xl bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border border-[#ff0080]/30 text-white hover:border-[#ff0080]/60 transition-all">
+                  <Tag className="w-5 h-5 text-[#ff0080]" />
+                  <span className="font-semibold">Ver promociones</span>
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">{promotions.length}</span>
+                </motion.button>
+              )}
+
+            </div>
+          ) : (
+            /* ── LAYOUT NORMAL (bar, disco, etc.) ── */
+            <>
+              {venue.description && (
+                <div className="text-gray-300 text-lg mb-6 space-y-3">
+                  {venue.description.split('\n').filter((line) => line.trim() !== '').map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
+              )}
+
+              {user && userRole !== 'venue_admin' && (
+                <div className="mb-6 p-4 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl">
+                  <p className="text-gray-300 text-sm font-medium mb-3">
+                    {userExistingReview ? 'Tu calificación:' : '¿Cómo calificarías este local?'}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <motion.button key={value} type="button" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
+                        disabled={submittingRating}
+                        onMouseEnter={() => setHoverRating(value)} onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => handleSubmitRating(value)} className="disabled:opacity-50">
+                        <Star className={`w-8 h-8 transition-colors ${value <= (hoverRating || userRating) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'}`} />
+                      </motion.button>
+                    ))}
+                    {submittingRating && <div className="w-5 h-5 border-2 border-[#ff0080] border-t-transparent rounded-full animate-spin ml-2" />}
+                    {userExistingReview && !submittingRating && <span className="text-xs text-gray-500 ml-2">Toca para cambiar</span>}
+                  </div>
+                </div>
+              )}
+
+              {promotions.length > 0 && (
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPromotions(true)}
+                  className="flex items-center space-x-2 mb-6 px-5 py-3 rounded-xl bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border border-[#ff0080]/30 text-white hover:border-[#ff0080]/60 transition-all">
+                  <Tag className="w-5 h-5 text-[#ff0080]" />
+                  <span className="font-semibold">Ver promociones</span>
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">{promotions.length}</span>
+                </motion.button>
+              )}
+
+              <div className="mb-8 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-[#ff0080]" />
+                    <h3 className="text-white font-bold">Ubicación</h3>
+                  </div>
+                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                    <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
+                  </a>
+                </div>
+                <div className="w-full h-64 rounded-lg overflow-hidden">
+                  <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
+                    mapId="nerd-venue-detail-map"
+                    options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
+                    className="w-full h-full">
+                    <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
+                  </Map>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4 mb-8">
+                <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
+                {venue.price_range && (
+                  <InfoCard icon={DollarSign} label="Rango de Precios"
+                    value={{ '$': 'Económico ($)', '$$': 'Medio ($$)', '$$$': 'Alto ($$$)' }[venue.price_range] || venue.price_range} />
+                )}
+                {venue.music_type && <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />}
+                {hasHours && (
+                  <button onClick={() => setShowHours(true)}
+                    className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors w-full text-left">
+                    <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
+                    <div>
+                      <p className="text-gray-500 text-sm">Horario de Atención</p>
+                      <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
         </motion.div>
       </div>
@@ -568,27 +576,22 @@ export default function VenueDetail() {
             className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowPromotions(false)}>
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-md rounded-2xl overflow-hidden border ${
-                isRutaPartido ? 'bg-[#0d0d1a] border-[#7928ca]/30' : 'bg-[#0f0f0f] border-[#1a1a1a]'
-              }`}>
-              <div className={`flex items-center justify-between p-5 border-b ${isRutaPartido ? 'border-[#7928ca]/20' : 'border-[#1a1a1a]'}`}>
+              onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-[#1a1a1a]">
                 <div className="flex items-center space-x-2">
-                  <Tag className={`w-5 h-5 ${isRutaPartido ? 'text-[#a855f7]' : 'text-[#ff0080]'}`} />
+                  <Tag className="w-5 h-5 text-[#ff0080]" />
                   <h3 className="text-white font-bold text-lg">Promociones</h3>
                 </div>
-                <button onClick={() => setShowPromotions(false)} className="p-2 rounded-full hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
+                <button onClick={() => setShowPromotions(false)} className="p-2 rounded-full hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
                 {promotions.map((promo, i) => (
                   <motion.div key={promo.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`p-4 rounded-xl border ${isRutaPartido ? 'bg-[#1a1a2e] border-[#7928ca]/20' : 'bg-[#1a1a1a] border-[#2a2a2a]'}`}>
+                    transition={{ delay: i * 0.05 }} className="p-4 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a]">
                     <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg, #7928ca, #ff0080)' }}>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0">
                         <Tag className="w-4 h-4 text-white" />
                       </div>
                       <div>
@@ -648,16 +651,13 @@ export default function VenueDetail() {
             className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowHours(false)}>
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-sm rounded-2xl overflow-hidden border ${
-                isRutaPartido ? 'bg-[#0d0d1a] border-[#7928ca]/30' : 'bg-[#0f0f0f] border-[#1a1a1a]'
-              }`}>
-              <div className={`flex items-center justify-between p-5 border-b ${isRutaPartido ? 'border-[#7928ca]/20' : 'border-[#1a1a1a]'}`}>
+              onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-[#1a1a1a]">
                 <div className="flex items-center space-x-2">
-                  <Clock className={`w-5 h-5 ${isRutaPartido ? 'text-[#a855f7]' : 'text-[#ff0080]'}`} />
+                  <Clock className="w-5 h-5 text-[#ff0080]" />
                   <h3 className="text-white font-bold text-lg">Horarios</h3>
                 </div>
-                <button onClick={() => setShowHours(false)} className="p-2 rounded-full hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
+                <button onClick={() => setShowHours(false)} className="p-2 rounded-full hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -667,10 +667,7 @@ export default function VenueDetail() {
                   if (!hours?.open || !hours?.close) return null;
                   return (
                     <motion.div key={dayKey} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                        isRutaPartido ? 'bg-[#1a1a2e]' : 'bg-[#1a1a1a]'
-                      }`}>
+                      transition={{ delay: i * 0.04 }} className="flex items-center justify-between py-2 px-3 rounded-lg bg-[#1a1a1a]">
                       <span className="text-gray-400 text-sm w-24">{DAYS_TRANSLATION[dayKey]}</span>
                       <span className="text-white font-medium text-sm">{hours.open} - {hours.close}</span>
                     </motion.div>
@@ -686,12 +683,10 @@ export default function VenueDetail() {
   );
 }
 
-function InfoCard({ icon: Icon, label, value, isRuta = false }) {
+function InfoCard({ icon: Icon, label, value }) {
   return (
-    <div className={`rounded-xl p-4 flex items-start space-x-3 border ${
-      isRuta ? 'bg-[#1a1a2e] border-[#7928ca]/20' : 'bg-[#0f0f0f] border-[#1a1a1a]'
-    }`}>
-      <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isRuta ? 'text-[#a855f7]' : 'text-[#ff0080]'}`} />
+    <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
+      <Icon className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
       <div>
         <p className="text-gray-500 text-sm mb-1">{label}</p>
         <p className="text-white">{value}</p>

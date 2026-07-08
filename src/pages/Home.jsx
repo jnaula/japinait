@@ -406,6 +406,7 @@ export default function Home() {
           </section>
         ) : (
           <>
+          
             {MOSTRAR_RUTA &&( 
               <>
             {eventPhase === 'champions' ? (

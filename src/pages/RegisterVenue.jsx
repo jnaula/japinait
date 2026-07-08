@@ -1,25 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, MapPin, Phone, Mail, Share2, DollarSign, Music, Tag, Plus, Trash2 } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Share2, DollarSign, Music, Tag, Plus, Trash2, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import PhotoUpload from '../components/venue/PhotoUpload';
 import OpeningHoursEditor from '../components/venue/OpeningHoursEditor';
 import MapPicker from '../components/MapPicker';
 
+const PRODUCTS = [
+  'Cervezas', 'Whisky', 'Ron', 'Vodka', 'Vino',
+  'Tequila', 'Aguardiente', 'Energizantes', 'Hielo', 'Snacks', 'Cigarrillos', 'Otros',
+];
+
+const PRODUCT_EMOJIS = {
+  Cervezas: '🍺', Whisky: '🥃', Ron: '🍹', Vodka: '🍸', Vino: '🍷',
+  Tequila: '🥂', Aguardiente: '🌿', Energizantes: '⚡', Hielo: '🧊',
+  Snacks: '🍟', Cigarrillos: '🚬', Otros: '📦',
+};
+
 export default function RegisterVenue() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [venueTypes, setVenueTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState([]);
 
-  // Promociones locales (se guardan en Supabase al hacer submit)
   const [promotions, setPromotions] = useState([]);
   const [newPromoTitle, setNewPromoTitle] = useState('');
   const [newPromoDescription, setNewPromoDescription] = useState('');
   const [showPromoForm, setShowPromoForm] = useState(false);
+
+  // Licorería
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [hasDelivery, setHasDelivery] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -27,6 +39,9 @@ export default function RegisterVenue() {
     latitude: -0.1807,
     longitude: -78.4678,
     phone: '',
+    whatsapp: '',
+    instagram: '',
+    facebook: '',
     email: '',
     website: '',
     venue_type_id: '',
@@ -44,9 +59,7 @@ export default function RegisterVenue() {
     },
   });
 
-  useEffect(() => {
-    fetchVenueTypes();
-  }, []);
+  useEffect(() => { fetchVenueTypes(); }, []);
 
   const fetchVenueTypes = async () => {
     try {
@@ -58,24 +71,33 @@ export default function RegisterVenue() {
     }
   };
 
+  // Detecta si el tipo seleccionado es Licorería
+  const selectedTypeName = venueTypes.find((t) => t.id === formData.venue_type_id)?.name || '';
+  const isLicoreria = selectedTypeName === 'Licorería';
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleLocationChange = (lat, lng) => {
-    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
   };
 
   const handleAddressChange = (address) => {
-    setFormData(prev => ({ ...prev, address }));
+    setFormData((prev) => ({ ...prev, address }));
   };
 
-  // ✅ Agregar promo localmente (sin Supabase todavía)
+  const toggleProduct = (product) => {
+    setSelectedProducts((prev) =>
+      prev.includes(product) ? prev.filter((p) => p !== product) : [...prev, product]
+    );
+  };
+
   const handleAddPromo = () => {
     if (!newPromoTitle.trim()) return alert('El título es obligatorio');
-    setPromotions(prev => [...prev, {
-      tempId: Date.now(), // ID temporal para el key de React
+    setPromotions((prev) => [...prev, {
+      tempId: Date.now(),
       title: newPromoTitle.trim(),
       description: newPromoDescription.trim() || null,
     }]);
@@ -85,7 +107,7 @@ export default function RegisterVenue() {
   };
 
   const handleDeletePromo = (tempId) => {
-    setPromotions(prev => prev.filter(p => p.tempId !== tempId));
+    setPromotions((prev) => prev.filter((p) => p.tempId !== tempId));
   };
 
   const uploadPhotos = async (venueId) => {
@@ -98,11 +120,7 @@ export default function RegisterVenue() {
         .from('venue-photos')
         .upload(fileName, photo.file, { cacheControl: '3600', upsert: false });
       if (error) throw error;
-      uploadedUrls.push({
-        url: fileName,
-        isPrimary: photo.isPrimary || i === 0,
-        orderIndex: i,
-      });
+      uploadedUrls.push({ url: fileName, isPrimary: photo.isPrimary || i === 0, orderIndex: i });
     }
     return uploadedUrls;
   };
@@ -111,15 +129,13 @@ export default function RegisterVenue() {
     e.preventDefault();
     if (!user) {
       alert('Debes iniciar sesión para registrar un local');
-      navigate('/login');
+      window.location.href = '/login';
       return;
     }
-
     setLoading(true);
     try {
       const venueTypeId = formData.venue_type_id?.length > 0 ? formData.venue_type_id : null;
 
-      // 1. Crear el venue
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
         .insert([{
@@ -130,16 +146,15 @@ export default function RegisterVenue() {
           status: 'approved',
           latitude: parseFloat(formData.latitude),
           longitude: parseFloat(formData.longitude),
+          // Campos de licorería — null para otros tipos
+          available_products: isLicoreria && selectedProducts.length > 0 ? selectedProducts : null,
+          has_delivery: isLicoreria ? hasDelivery : false,
         }])
         .select()
         .single();
 
-      if (venueError) {
-        alert('ERROR INSERT VENUE: ' + JSON.stringify(venueError));
-        return;
-      }
+      if (venueError) { alert('ERROR INSERT VENUE: ' + JSON.stringify(venueError)); return; }
 
-      // 2. Subir fotos
       if (photos.length > 0) {
         const uploadedPhotos = await uploadPhotos(venueData.id);
         const photoRecords = uploadedPhotos.map((photo) => ({
@@ -149,39 +164,23 @@ export default function RegisterVenue() {
           order_index: photo.orderIndex,
         }));
         const { error: photosError } = await supabase.from('venue_photos').insert(photoRecords);
-        if (photosError) {
-          alert('ERROR INSERT PHOTOS: ' + JSON.stringify(photosError));
-          return;
-        }
+        if (photosError) { alert('ERROR INSERT PHOTOS: ' + JSON.stringify(photosError)); return; }
       }
 
-      // ✅ 3. Insertar promociones con el venue_id recién creado
       if (promotions.length > 0) {
-        const promoRecords = promotions.map(({ title, description }) => ({
-          venue_id: venueData.id,
-          title,
-          description,
-        }));
+        const promoRecords = promotions.map(({ title, description }) => ({ venue_id: venueData.id, title, description }));
         const { error: promoError } = await supabase.from('promotions').insert(promoRecords);
-        if (promoError) {
-          alert('ERROR INSERT PROMOTIONS: ' + JSON.stringify(promoError));
-          return;
-        }
+        if (promoError) { alert('ERROR INSERT PROMOTIONS: ' + JSON.stringify(promoError)); return; }
       }
 
       alert('Local registrado exitosamente.');
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } catch (err) {
-  console.error('RegisterVenue: Error:', err);
-  if (err?.message?.includes('JWT') || err?.message?.includes('session')) {
-    alert('Tu sesión expiró. Por favor inicia sesión de nuevo.');
-    window.location.href = '/login';
-  } else {
-    alert('Error al registrar el local: ' + err.message);
-  }
-} finally {
-  setLoading(false);
-}
+      console.error('RegisterVenue: Error:', err);
+      alert('Error al registrar el local: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!user) {
@@ -207,11 +206,11 @@ export default function RegisterVenue() {
         </motion.div>
 
         <motion.form
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           onSubmit={handleSubmit}
           className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-6 space-y-6"
         >
+          {/* Nombre + Tipo */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
@@ -221,7 +220,7 @@ export default function RegisterVenue() {
               <input
                 type="text" name="name" value={formData.name} onChange={handleChange} required
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-                placeholder="Ej: Discoteca La Rumba"
+                placeholder="Ej: Licorería La Esquina"
               />
             </div>
             <div>
@@ -241,6 +240,7 @@ export default function RegisterVenue() {
             </div>
           </div>
 
+          {/* Dirección */}
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
               <MapPin className="w-4 h-4 text-[#ff0080]" />
@@ -258,6 +258,7 @@ export default function RegisterVenue() {
             />
           </div>
 
+          {/* Descripción */}
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
               <Building2 className="w-4 h-4 text-[#ff0080]" />
@@ -269,67 +270,112 @@ export default function RegisterVenue() {
               placeholder="Describe tu local..."
             />
           </div>
-           
-          {/* ✅ SECCIÓN PROMOCIONES */}
+
+          {/* ── BLOQUE EXCLUSIVO LICORERÍA ── */}
+          {isLicoreria && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-5 border border-[#7928ca]/30 rounded-xl p-5 bg-[#7928ca]/5"
+            >
+              <p className="text-[#a855f7] text-xs font-bold uppercase tracking-widest">Opciones de Licorería</p>
+
+              {/* Productos disponibles */}
+              <div>
+                <p className="text-sm font-medium text-gray-300 mb-3">Productos disponibles</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {PRODUCTS.map((product) => {
+                    const checked = selectedProducts.includes(product);
+                    return (
+                      <button
+                        key={product}
+                        type="button"
+                        onClick={() => toggleProduct(product)}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all text-left ${
+                          checked
+                            ? 'bg-[#7928ca]/20 border-[#7928ca] text-white'
+                            : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-400 hover:border-[#7928ca]/50'
+                        }`}
+                      >
+                        <span>{PRODUCT_EMOJIS[product]}</span>
+                        <span>{product}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Delivery switch */}
+              <div>
+                <p className="text-sm font-medium text-gray-300 mb-3">¿Este local ofrece servicio de delivery?</p>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setHasDelivery(true)}
+                    className={`px-5 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
+                      hasDelivery
+                        ? 'bg-[#7928ca] border-[#7928ca] text-white'
+                        : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-400 hover:border-[#7928ca]/50'
+                    }`}
+                  >
+                    🛵 Sí, tenemos delivery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHasDelivery(false)}
+                    className={`px-5 py-2.5 rounded-lg border text-sm font-semibold transition-all ${
+                      !hasDelivery
+                        ? 'bg-[#2a2a2a] border-[#3a3a3a] text-white'
+                        : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-400 hover:border-gray-500'
+                    }`}
+                  >
+                    No por ahora
+                  </button>
+                </div>
+                {hasDelivery && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    El número de teléfono registrado será el contacto para pedidos.
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Promociones */}
           <div className="border border-[#2a2a2a] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between p-4 bg-[#1a1a1a]">
               <div className="flex items-center space-x-2">
                 <Tag className="w-4 h-4 text-[#ff0080]" />
                 <span className="text-sm font-medium text-gray-300">Promociones</span>
                 {promotions.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">
-                    {promotions.length}
-                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">{promotions.length}</span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setShowPromoForm(!showPromoForm)}
-                className="flex items-center space-x-1 text-sm text-[#ff0080] hover:text-[#ff40a0] transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Agregar</span>
+              <button type="button" onClick={() => setShowPromoForm(!showPromoForm)}
+                className="flex items-center space-x-1 text-sm text-[#ff0080] hover:text-[#ff40a0] transition-colors">
+                <Plus className="w-4 h-4" /><span>Agregar</span>
               </button>
             </div>
-
-            {/* Formulario nueva promo */}
             {showPromoForm && (
               <div className="p-4 border-t border-[#2a2a2a] bg-[#0f0f0f] space-y-3">
-                <input
-                  type="text"
-                  value={newPromoTitle}
-                  onChange={(e) => setNewPromoTitle(e.target.value)}
+                <input type="text" value={newPromoTitle} onChange={(e) => setNewPromoTitle(e.target.value)}
                   placeholder="Título de la promoción *"
-                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm"
-                />
-                <textarea
-                  value={newPromoDescription}
-                  onChange={(e) => setNewPromoDescription(e.target.value)}
-                  rows={2}
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm" />
+                <textarea value={newPromoDescription} onChange={(e) => setNewPromoDescription(e.target.value)} rows={2}
                   placeholder="Descripción (opcional)"
-                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm resize-none"
-                />
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] text-sm resize-none" />
                 <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={handleAddPromo}
-                    className="flex-1 py-2 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors text-sm font-semibold"
-                  >
+                  <button type="button" onClick={handleAddPromo}
+                    className="flex-1 py-2 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors text-sm font-semibold text-white">
                     Agregar promoción
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowPromoForm(false); setNewPromoTitle(''); setNewPromoDescription(''); }}
-                    className="px-4 py-2 rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors text-sm text-gray-300"
-                  >
+                  <button type="button" onClick={() => { setShowPromoForm(false); setNewPromoTitle(''); setNewPromoDescription(''); }}
+                    className="px-4 py-2 rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors text-sm text-gray-300">
                     Cancelar
                   </button>
                 </div>
               </div>
             )}
-            
-
-            {/* Lista de promos agregadas */}
             {promotions.length > 0 && (
               <div className="divide-y divide-[#2a2a2a]">
                 {promotions.map((promo) => (
@@ -340,127 +386,123 @@ export default function RegisterVenue() {
                       </div>
                       <div>
                         <p className="text-white font-medium text-sm">{promo.title}</p>
-                        {promo.description && (
-                          <p className="text-gray-400 text-xs mt-0.5">{promo.description}</p>
-                        )}
+                        {promo.description && <p className="text-gray-400 text-xs mt-0.5">{promo.description}</p>}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePromo(promo.tempId)}
-                      className="p-1.5 rounded-full hover:bg-red-600/20 text-gray-500 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
-                    >
+                    <button type="button" onClick={() => handleDeletePromo(promo.tempId)}
+                      className="p-1.5 rounded-full hover:bg-red-600/20 text-gray-500 hover:text-red-500 transition-colors ml-2 flex-shrink-0">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
-
             {promotions.length === 0 && !showPromoForm && (
-              <p className="text-sm text-gray-500 p-4 text-center bg-[#0f0f0f]">
-                Sin promociones. Toca "Agregar" para añadir una.
-              </p>
+              <p className="text-sm text-gray-500 p-4 text-center bg-[#0f0f0f]">Sin promociones. Toca "Agregar" para añadir una.</p>
             )}
           </div>
 
-
-          <div className="grid md:grid-cols-3 gap-6">
+          {/* Contacto */}
+          <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
                 <Phone className="w-4 h-4 text-[#ff0080]" />
-                <span>Teléfono</span>
+                <span>Teléfono *</span>
               </label>
-              <input
-                type="tel" name="phone" value={formData.phone} onChange={handleChange}
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-                placeholder="+593 99 123 4567"
-              />
+                placeholder="+593 99 123 4567" />
             </div>
-
-            
-
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
+                <Phone className="w-4 h-4 text-[#ff0080]" />
+                <span>WhatsApp *</span>
+              </label>
+              <input type="tel" name="whatsapp" value={formData.whatsapp} onChange={handleChange} required
+                className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
+                placeholder="+593 99 123 4567" />
+            </div>
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
+                <Share2 className="w-4 h-4 text-[#ff0080]" />
+                <span>Instagram *</span>
+              </label>
+              <input type="url" name="instagram" value={formData.instagram} onChange={handleChange} required
+                className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
+                placeholder="https://instagram.com/tulocal" />
+            </div>
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
+                <Facebook className="w-4 h-4 text-[#ff0080]" />
+                <span>Facebook *</span>
+              </label>
+              <input type="url" name="facebook" value={formData.facebook} onChange={handleChange} required
+                className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
+                placeholder="https://facebook.com/tulocal" />
+            </div>
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
                 <Mail className="w-4 h-4 text-[#ff0080]" />
                 <span>Email</span>
               </label>
-              <input
-                type="email" name="email" value={formData.email} onChange={handleChange}
+              <input type="email" name="email" value={formData.email} onChange={handleChange}
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-                placeholder="contacto@local.com"
-              />
+                placeholder="contacto@local.com" />
             </div>
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
                 <Share2 className="w-4 h-4 text-[#ff0080]" />
-                <span>Redes Sociales</span>
+                <span>Sitio web</span>
               </label>
-              <input
-                type="url" name="website" value={formData.website} onChange={handleChange}
+              <input type="url" name="website" value={formData.website} onChange={handleChange}
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-                placeholder="https://instagram.com/tulocal"
-              />
+                placeholder="https://tulocal.com" />
             </div>
           </div>
 
-          <div>
-            <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
-              <Music className="w-4 h-4 text-[#ff0080]" />
-              <span>Tipo de Música</span>
-            </label>
-            <input
-              type="text" name="music_type" value={formData.music_type} onChange={handleChange}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-              placeholder="Ej: Electrónica, Reggaeton, Rock"
-            />
-          </div>
-
-          <div>
-            <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
-              <DollarSign className="w-4 h-4 text-[#ff0080]" />
-              <span>Rango de Precio</span>
-            </label>
-            <select
-              name="price_range" value={formData.price_range} onChange={handleChange}
-              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-            >
-              <option value="$">Económico ($)</option>
-              <option value="$$">Medio ($$)</option>
-              <option value="$$$">Alto ($$$)</option>
-            </select>
-          </div>
-
-          
+          {/* Campos solo para NO licorería */}
+          {!isLicoreria && (
+            <>
+              <div>
+                <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
+                  <Music className="w-4 h-4 text-[#ff0080]" />
+                  <span>Tipo de Música</span>
+                </label>
+                <input type="text" name="music_type" value={formData.music_type} onChange={handleChange}
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
+                  placeholder="Ej: Electrónica, Reggaeton, Rock" />
+              </div>
+              <div>
+                <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
+                  <DollarSign className="w-4 h-4 text-[#ff0080]" />
+                  <span>Rango de Precio</span>
+                </label>
+                <select name="price_range" value={formData.price_range} onChange={handleChange}
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]">
+                  <option value="$">Económico ($)</option>
+                  <option value="$$">Medio ($$)</option>
+                  <option value="$$$">Alto ($$$)</option>
+                </select>
+              </div>
+            </>
+          )}
 
           <OpeningHoursEditor
             value={formData.opening_hours}
-            onChange={(val) => setFormData(prev => ({ ...prev, opening_hours: val }))}
+            onChange={(val) => setFormData((prev) => ({ ...prev, opening_hours: val }))}
           />
 
-          
-          <PhotoUpload photos={photos} onPhotosChange={setPhotos} maxPhotos={8} />
+          <PhotoUpload photos={photos} onPhotosChange={setPhotos} maxPhotos={5} />
 
           <div className="flex justify-end space-x-4">
             <a href="/" className="px-6 py-3 bg-[#1a1a1a] text-gray-300 rounded-lg font-medium hover:bg-[#2a2a2a] transition-colors">
               Cancelar
             </a>
-            <motion.button
-  whileHover={{ scale: loading ? 1 : 1.02 }}
-  whileTap={{ scale: loading ? 1 : 0.98 }}
-  type="submit"
-  disabled={loading}
-  className="px-6 py-3 bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
->
-  {loading ? (
-    <div className="flex items-center space-x-2">
-      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-      <span>Registrando...</span>
-    </div>
-  ) : (
-    'Registrar Local'
-  )}
-</motion.button>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              type="submit" disabled={loading}
+              className="px-6 py-3 bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? 'Registrando...' : 'Registrar Local'}
+            </motion.button>
           </div>
         </motion.form>
       </div>
