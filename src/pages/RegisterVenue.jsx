@@ -416,27 +416,27 @@ export default function RegisterVenue() {
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
                 <Phone className="w-4 h-4 text-[#ff0080]" />
-                <span>WhatsApp *</span>
+                <span>WhatsApp</span>
               </label>
-              <input type="tel" name="whatsapp" value={formData.whatsapp} onChange={handleChange} required
+              <input type="tel" name="whatsapp" value={formData.whatsapp} onChange={handleChange}
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
                 placeholder="+593 99 123 4567" />
             </div>
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
                 <Share2 className="w-4 h-4 text-[#ff0080]" />
-                <span>Instagram *</span>
+                <span>Instagram</span>
               </label>
-              <input type="url" name="instagram" value={formData.instagram} onChange={handleChange} required
+              <input type="url" name="instagram" value={formData.instagram} onChange={handleChange}
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
                 placeholder="https://instagram.com/tulocal" />
             </div>
             <div>
               <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
                 <Facebook className="w-4 h-4 text-[#ff0080]" />
-                <span>Facebook *</span>
+                <span>Facebook</span>
               </label>
-              <input type="url" name="facebook" value={formData.facebook} onChange={handleChange} required
+              <input type="url" name="facebook" value={formData.facebook} onChange={handleChange}
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
                 placeholder="https://facebook.com/tulocal" />
             </div>
@@ -448,15 +448,6 @@ export default function RegisterVenue() {
               <input type="email" name="email" value={formData.email} onChange={handleChange}
                 className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
                 placeholder="contacto@local.com" />
-            </div>
-            <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-gray-300 mb-2">
-                <Share2 className="w-4 h-4 text-[#ff0080]" />
-                <span>Sitio web</span>
-              </label>
-              <input type="url" name="website" value={formData.website} onChange={handleChange}
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#ff0080] focus:ring-1 focus:ring-[#ff0080]"
-                placeholder="https://tulocal.com" />
             </div>
           </div>
 
