@@ -10,7 +10,7 @@ const CURATORS = [
   { id: 'djs', label: 'DJs locales', emoji: '🎧' },
   { id: 'influencers', label: 'Influencers', emoji: '📸' },
 ];
-
+const MOSTRAR_RUTA = false;
 const CHAMPIONS_EXPIRY = new Date('2026-06-01T00:00:00');
 
 function BannerMundial({ className = '', style = {}, onClick }) {
@@ -53,6 +53,7 @@ export default function Home() {
   const scrollRef = useRef(null);
   const allVenuesRef = useRef(null);
   const eventPhase = getEventPhase();
+
 
   useEffect(() => {
     if (showRuta) window.history.pushState({ rutaOpen: true }, '');
@@ -166,7 +167,8 @@ export default function Home() {
 
   const isFiltering = searchQuery || selectedType !== 'all';
 
-  // ── PANTALLA RUTA DEL PARTIDO ─────────────────────────
+  
+// ── PANTALLA RUTA DEL PARTIDO ─────────────────────────
   if (showRuta) {
     const isChampions = eventPhase === 'champions';
     return (
@@ -404,6 +406,8 @@ export default function Home() {
           </section>
         ) : (
           <>
+            {MOSTRAR_RUTA &&( 
+              <>
             {eventPhase === 'champions' ? (
               <>
                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
@@ -466,6 +470,8 @@ export default function Home() {
                   </button>
                 </section>
               </>
+            )}
+            </>
             )}
 
             <section className="mb-7">
