@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, ChevronRight, ChevronUp, ArrowLeft, Share2, Tag } from 'lucide-react';
+import { Search, MapPin, ChevronRight, ChevronUp, ArrowLeft, Share2, Tag, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
 
@@ -12,6 +12,12 @@ const CURATORS = [
 ];
 const MOSTRAR_RUTA = false;
 const CHAMPIONS_EXPIRY = new Date('2026-06-01T00:00:00');
+
+const PRODUCT_EMOJIS = {
+  Cervezas: '🍺', Whisky: '🥃', Ron: '🍹', Vodka: '🍸', Vino: '🍷',
+  Tequila: '🥂', Aguardiente: '🌿', Energizantes: '⚡', Hielo: '🧊',
+  Snacks: '🍟', Cigarrillos: '🚬', Otros: '📦',
+};
 
 function BannerMundial({ className = '', style = {}, onClick }) {
   const [hasImage, setHasImage] = React.useState(true);
@@ -37,11 +43,79 @@ function getEventPhase() {
   return new Date() < CHAMPIONS_EXPIRY ? 'champions' : 'mundial';
 }
 
+// ── Card horizontal para licorerías ──────────────────────
+function LicoreriaCard({ venue }) {
+  const navigate = useNavigate();
+  const products = venue.available_products || [];
+  const promoLabel = venue.promotions?.[0]?.title || null;
+  const phone = venue.phone || '';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      onClick={() => navigate(`/venue/${venue.id}`)}
+      className="flex gap-3 bg-[#0d1f0d] border border-[#1a3a1a] rounded-2xl p-3 cursor-pointer hover:border-green-700/60 transition-colors"
+    >
+      {/* Foto */}
+      <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-[#1a2a1a]">
+        {venue.primary_photo ? (
+          <img src={venue.primary_photo} alt={venue.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-3xl">🍾</span>
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-white font-bold text-sm leading-tight truncate">{venue.name}</p>
+          <button
+            onClick={(e) => e.stopPropagation()}
+            className="flex-shrink-0 text-gray-600 hover:text-red-400 transition-colors"
+          >
+            ♡
+          </button>
+        </div>
+
+        {/* Delivery */}
+        {venue.has_delivery ? (
+          <p className="text-green-400 text-xs font-semibold mt-0.5">🛵 Delivery disponible</p>
+        ) : (
+          <p className="text-gray-500 text-xs mt-0.5">Sin delivery</p>
+        )}
+
+        {/* Productos */}
+        {products.length > 0 && (
+          <p className="text-gray-400 text-xs mt-1 truncate">
+            {products.slice(0, 4).map((p) => `${PRODUCT_EMOJIS[p] || '📦'} ${p}`).join(' · ')}
+          </p>
+        )}
+
+        {/* Promo */}
+        {promoLabel && (
+          <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold text-white bg-[#ff6b00]">
+            🔥 {promoLabel}
+          </span>
+        )}
+
+        {/* Teléfono */}
+        {phone && (
+          <p className="text-gray-500 text-xs mt-1.5 flex items-center gap-1">
+            <Phone className="w-3 h-3" /> {phone}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Home() {
   const [venues, setVenues] = useState([]);
   const [rutaVenues, setRutaVenues] = useState([]);
-  const [rutaPromos, setRutaPromos] = useState([]); // ✅ promos de la ruta
-  const [loadingPromos, setLoadingPromos] = useState(false); // ✅
+  const [rutaPromos, setRutaPromos] = useState([]);
+  const [loadingPromos, setLoadingPromos] = useState(false);
   const [venueTypes, setVenueTypes] = useState([]);
   const [selectedType, setSelectedType] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -53,7 +127,6 @@ export default function Home() {
   const scrollRef = useRef(null);
   const allVenuesRef = useRef(null);
   const eventPhase = getEventPhase();
-
 
   useEffect(() => {
     if (showRuta) window.history.pushState({ rutaOpen: true }, '');
@@ -72,12 +145,8 @@ export default function Home() {
     else { setShowRuta(false); setRutaTab('ruta'); }
   };
 
-  useEffect(() => {
-    fetchVenueTypes();
-    fetchVenues();
-  }, []);
+  useEffect(() => { fetchVenueTypes(); fetchVenues(); }, []);
 
-  // ✅ Cargar promos cuando se abre la pestaña Promos
   useEffect(() => {
     if (rutaTab === 'promos' && rutaPromos.length === 0 && rutaVenues.length > 0) {
       fetchRutaPromos();
@@ -97,7 +166,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('venues')
-        .select('*, venue_types(name), venue_photos(photo_url, is_primary)')
+        .select('*, venue_types(name), venue_photos(photo_url, is_primary), promotions(title)')
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -118,27 +187,25 @@ export default function Home() {
     finally { setLoading(false); }
   };
 
-  // ✅ Fetch promos de los locales de la ruta
   const fetchRutaPromos = async () => {
     setLoadingPromos(true);
     try {
       const venueIds = rutaVenues.map((v) => v.id);
       if (venueIds.length === 0) return;
-
       const { data, error } = await supabase
         .from('promotions')
         .select('*, venues(name, venue_photos(photo_url, is_primary))')
         .in('venue_id', venueIds)
         .order('created_at', { ascending: false });
-
       if (error) throw error;
       setRutaPromos(data || []);
-    } catch (err) {
-      console.error('Error fetching ruta promos:', err);
-    } finally {
-      setLoadingPromos(false);
-    }
+    } catch (err) { console.error('Error fetching ruta promos:', err); }
+    finally { setLoadingPromos(false); }
   };
+
+  // Detecta el tipo Licorería
+  const licoreriaType = venueTypes.find((t) => t.name === 'Licorería');
+  const isLicoreriaFilter = licoreriaType && selectedType === licoreriaType.id;
 
   const filteredVenues = venues.filter((venue) => {
     const matchesType = selectedType === 'all' || venue.venue_type_id === selectedType;
@@ -148,6 +215,9 @@ export default function Home() {
       venue.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
+
+  // Licorerías para la sección del home
+  const licorerias = venues.filter((v) => v.venue_types?.name === 'Licorería');
 
   const getCuratorVenues = () => {
     if (activeCurator === 'djs') return venues.filter((_, i) => i % 3 === 0).slice(0, 8);
@@ -167,13 +237,11 @@ export default function Home() {
 
   const isFiltering = searchQuery || selectedType !== 'all';
 
-  
-// ── PANTALLA RUTA DEL PARTIDO ─────────────────────────
+  // ── PANTALLA RUTA DEL PARTIDO ─────────────────────────
   if (showRuta) {
     const isChampions = eventPhase === 'champions';
     return (
       <div className="min-h-screen bg-[#0d0d0d] pb-10">
-        {/* Header */}
         <div className="sticky top-0 z-20 bg-[#0d0d0d]/95 backdrop-blur-md border-b border-white/5 px-4 py-3">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <button onClick={handleCloseRuta} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
@@ -190,21 +258,17 @@ export default function Home() {
         </div>
 
         <div className="max-w-2xl mx-auto px-4 pt-4">
-          {/* Tabs */}
           <div className="flex border-b border-white/10 mb-5">
             {['ruta', 'promos', 'info'].map((tab) => (
               <button key={tab} onClick={() => setRutaTab(tab)}
                 className={`px-5 py-2.5 text-sm font-semibold capitalize transition-all border-b-2 -mb-px ${
-                  rutaTab === tab
-                    ? 'text-[#7928ca] border-[#7928ca]'
-                    : 'text-gray-500 border-transparent hover:text-gray-300'
+                  rutaTab === tab ? 'text-[#7928ca] border-[#7928ca]' : 'text-gray-500 border-transparent hover:text-gray-300'
                 }`}>
                 {tab === 'ruta' ? 'Ruta' : tab === 'promos' ? 'Promos' : 'Info'}
               </button>
             ))}
           </div>
 
-          {/* Banner */}
           <div className="relative rounded-2xl overflow-hidden mb-6">
             {isChampions ? (
               <img src="/banner-ruta.jpeg" alt="Ruta del Partido" className="w-full object-cover rounded-2xl" />
@@ -213,7 +277,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* TAB: RUTA */}
           {rutaTab === 'ruta' && (
             rutaVenues.length === 0 ? (
               <div className="text-center py-16">
@@ -234,7 +297,6 @@ export default function Home() {
             )
           )}
 
-          {/* ✅ TAB: PROMOS */}
           {rutaTab === 'promos' && (
             loadingPromos ? (
               <div className="flex justify-center py-16">
@@ -251,19 +313,13 @@ export default function Home() {
             ) : (
               <div className="space-y-3">
                 {rutaPromos.map((promo, i) => {
-                  // Imagen del local
                   const primaryPhoto = promo.venues?.venue_photos?.find((p) => p.is_primary);
                   const photoPath = primaryPhoto?.photo_url || promo.venues?.venue_photos?.[0]?.photo_url;
                   const imageUrl = photoPath
-                    ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl
-                    : null;
-
+                    ? supabase.storage.from('venue-photos').getPublicUrl(photoPath).data.publicUrl : null;
                   return (
-                    <motion.div key={promo.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="flex items-start gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#7928ca]/40 transition-colors"
-                    >
-                      {/* Ícono/imagen del local */}
+                    <motion.div key={promo.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                      className="flex items-start gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 hover:border-[#7928ca]/40 transition-colors">
                       {imageUrl ? (
                         <img src={imageUrl} alt={promo.venues?.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
                       ) : (
@@ -272,17 +328,12 @@ export default function Home() {
                           <Tag className="w-5 h-5 text-[#7928ca]" />
                         </div>
                       )}
-
                       <div className="flex-1 min-w-0">
-                        {/* Nombre del local */}
                         <p className="text-gray-500 text-xs mb-0.5 truncate">{promo.venues?.name}</p>
-                        {/* Título de la promo */}
                         <p className="text-white font-bold text-sm mb-1">{promo.title}</p>
-                        {/* Descripción */}
                         {promo.description && (
                           <p className="text-gray-400 text-xs leading-relaxed whitespace-pre-line">{promo.description}</p>
                         )}
-                        {/* Badge promo */}
                         <div className="mt-2">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
                             style={{ background: 'linear-gradient(90deg, #7928ca, #ff0080)' }}>
@@ -297,7 +348,6 @@ export default function Home() {
             )
           )}
 
-          {/* TAB: INFO */}
           {rutaTab === 'info' && (
             <div className="rounded-2xl bg-[#161616] border border-[#222] p-5 space-y-4">
               {isChampions ? (
@@ -343,36 +393,120 @@ export default function Home() {
   }
 
   // ── HOME PRINCIPAL ─────────────────────────────────────
+  // Fondo cambia a verde oscuro cuando filtramos por licorería
+  const bgClass = isLicoreriaFilter ? 'bg-[#060f06]' : 'bg-[#0d0d0d]';
+
   return (
-    <div className="min-h-screen bg-[#0d0d0d] pb-10">
+    <div className={`min-h-screen ${bgClass} pb-10 transition-colors duration-300`}>
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
+        {/* HEADER */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
           <p className="text-gray-500 text-xs mb-0.5">¡Listo para salir?</p>
-          <h1 className="text-2xl font-extrabold text-white leading-tight">
-            Descubre los mejores<br />
-            lugares en <span className="text-[#7928ca]">Quito</span>
-          </h1>
+          {isLicoreriaFilter ? (
+            <h1 className="text-2xl font-extrabold text-white leading-tight">
+              🍾 Licorerías en <span className="text-green-400">Quito</span>
+            </h1>
+          ) : (
+            <h1 className="text-2xl font-extrabold text-white leading-tight">
+              Descubre los mejores<br />
+              lugares en <span className="text-[#7928ca]">Quito</span>
+            </h1>
+          )}
         </motion.div>
 
+        {/* SEARCH */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="relative mb-5">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input type="text" placeholder="Buscar bares, fiestas, eventos..." value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-[#7928ca] transition-colors text-sm" />
+          <input type="text"
+            placeholder={isLicoreriaFilter ? 'Buscar licorerías, bebidas, promociones...' : 'Buscar bares, fiestas, eventos...'}
+            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            className={`w-full pl-10 pr-4 py-3 bg-[#1a1a1a] border rounded-xl text-white placeholder-gray-600 focus:outline-none transition-colors text-sm ${
+              isLicoreriaFilter ? 'border-[#1a3a1a] focus:border-green-600' : 'border-[#2a2a2a] focus:border-[#7928ca]'
+            }`} />
         </motion.div>
 
+        {/* FILTROS PILL */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
           className="flex gap-2 overflow-x-auto pb-2 mb-6" style={{ scrollbarWidth: 'none' }}>
-          <PillFilter active={selectedType === 'all'} onClick={() => setSelectedType('all')}>Todos</PillFilter>
-          {venueTypes.map((type) => (
-            <PillFilter key={type.id} active={selectedType === type.id} onClick={() => setSelectedType(type.id)}>
-              {type.name}
-            </PillFilter>
-          ))}
+          <PillFilter active={selectedType === 'all'} onClick={() => setSelectedType('all')} green={false}>
+            Todos
+          </PillFilter>
+          {venueTypes.map((type) => {
+            const isLic = type.name === 'Licorería';
+            const isActive = selectedType === type.id;
+            if (isLic) {
+              return (
+                <button key={type.id} onClick={() => setSelectedType(type.id)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+                    isActive
+                      ? 'bg-green-600 border-green-500 text-white'
+                      : 'bg-[#0d1f0d] border-green-800/60 text-green-400 hover:border-green-600'
+                  }`}>
+                  🍾 {type.name} <ChevronRight className="w-3 h-3" />
+                </button>
+              );
+            }
+            return (
+              <PillFilter key={type.id} active={isActive} onClick={() => setSelectedType(type.id)} green={false}>
+                {type.name}
+              </PillFilter>
+            );
+          })}
         </motion.div>
 
-        {isFiltering ? (
+        {/* ── MODO FILTRADO LICORERÍA ── */}
+        {isLicoreriaFilter ? (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-bold text-base flex items-center gap-2">
+                🍾 Licorerías cerca de ti
+              </h2>
+              <span className="text-green-400 text-xs font-semibold">{filteredVenues.length} resultados</span>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : filteredVenues.length > 0 ? (
+              <>
+                <div className="space-y-3 mb-6">
+                  {filteredVenues.map((venue, i) => (
+                    <motion.div key={venue.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                      <LicoreriaCard venue={venue} />
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Banner "¿Listo para tu pedido?" */}
+                <div className="rounded-2xl bg-[#0d1f0d] border border-green-800/40 p-5 flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-green-900/40 flex items-center justify-center flex-shrink-0">
+                    <span className="text-2xl">📱</span>
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm mb-0.5">¿Listo para tu pedido?</p>
+                    <p className="text-gray-400 text-xs">Llama o escribe por WhatsApp directamente a la licorería y realiza tu pedido.</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-14 h-14 bg-[#0d1f0d] rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">🍾</span>
+                </div>
+                <p className="text-white font-semibold mb-1">Sin resultados</p>
+                <p className="text-gray-500 text-sm mb-4">Intenta con otra búsqueda</p>
+                <button onClick={() => { setSearchQuery(''); setSelectedType('all'); }}
+                  className="px-5 py-2 rounded-full bg-green-700 text-white text-sm font-semibold">
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
+          </section>
+
+        ) : isFiltering ? (
+          /* ── MODO FILTRADO NORMAL ── */
           <section>
             <p className="text-gray-500 text-sm mb-4">
               Mostrando <span className="text-white font-semibold">{filteredVenues.length}</span>{' '}
@@ -404,77 +538,79 @@ export default function Home() {
               </div>
             )}
           </section>
+
         ) : (
+          /* ── HOME NORMAL ── */
           <>
-          
-            {MOSTRAR_RUTA &&( 
+            {MOSTRAR_RUTA && (
               <>
-            {eventPhase === 'champions' ? (
-              <>
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }} className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
-                  onClick={() => setShowRuta(true)}>
-                  <img src="/banner-ruta.jpeg" alt="Ruta del Partido" className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
-                </motion.div>
-                <section className="mb-7">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
-                    <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
-                      Ver todas <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <button onClick={() => setShowRuta(true)}
-                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
-                    <div className="relative w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
-                      <span className="text-3xl">⚽</span>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-white font-bold text-sm">Final Champions League</p>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Top</span>
+                {eventPhase === 'champions' ? (
+                  <>
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4 }} className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
+                      onClick={() => setShowRuta(true)}>
+                      <img src="/banner-ruta.jpeg" alt="Ruta del Partido" className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
+                    </motion.div>
+                    <section className="mb-7">
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
+                        <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
+                          Ver todas <ChevronRight className="w-3 h-3" />
+                        </button>
                       </div>
-                      <p className="text-gray-400 text-xs">PSG vs Arsenal</p>
-                      <p className="text-gray-600 text-xs mt-0.5">Sábado 30 de mayo • 15:00</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                  </button>
-                </section>
-              </>
-            ) : (
-              <>
-                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4 }} className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
-                  onClick={() => setShowRuta(true)}>
-                  <BannerMundial className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
-                </motion.div>
-                <section className="mb-7">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
-                    <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
-                      Ver todas <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <button onClick={() => setShowRuta(true)}
-                    className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
-                    <div className="w-16 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
-                      <span className="text-3xl">🌍</span>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-white font-bold text-sm">Ruta del Mundial 2026</p>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Nuevo</span>
+                      <button onClick={() => setShowRuta(true)}
+                        className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
+                        <div className="w-16 h-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#160830] to-[#0c1535] flex items-center justify-center">
+                          <span className="text-3xl">⚽</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="text-white font-bold text-sm">Final Champions League</p>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Top</span>
+                          </div>
+                          <p className="text-gray-400 text-xs">PSG vs Arsenal</p>
+                          <p className="text-gray-600 text-xs mt-0.5">Sábado 30 de mayo • 15:00</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                      </button>
+                    </section>
+                  </>
+                ) : (
+                  <>
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4 }} className="relative rounded-2xl overflow-hidden mb-6 cursor-pointer"
+                      onClick={() => setShowRuta(true)}>
+                      <BannerMundial className="w-full object-cover rounded-2xl" style={{ maxHeight: 200 }} />
+                    </motion.div>
+                    <section className="mb-7">
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-white font-bold text-base">Eventos cerca de ti</h2>
+                        <button className="flex items-center gap-1 text-[#7928ca] text-xs font-semibold">
+                          Ver todas <ChevronRight className="w-3 h-3" />
+                        </button>
                       </div>
-                      <p className="text-gray-400 text-xs">Los mejores locales de Quito</p>
-                      <p className="text-gray-600 text-xs mt-0.5">Próximamente</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                  </button>
-                </section>
+                      <button onClick={() => setShowRuta(true)}
+                        className="w-full flex items-center gap-3 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 hover:border-[#7928ca]/50 transition-colors">
+                        <div className="w-16 h-14 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#0c2c0c] to-[#0c1535] flex items-center justify-center">
+                          <span className="text-3xl">🌍</span>
+                        </div>
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="text-white font-bold text-sm">Ruta del Mundial 2026</p>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ background: '#7928ca' }}>Nuevo</span>
+                          </div>
+                          <p className="text-gray-400 text-xs">Los mejores locales de Quito</p>
+                          <p className="text-gray-600 text-xs mt-0.5">Próximamente</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                      </button>
+                    </section>
+                  </>
+                )}
               </>
-            )}
-            </>
             )}
 
+            {/* RECOMENDADO POR */}
             <section className="mb-7">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-white font-bold text-base">Recomendado por...</h2>
@@ -506,6 +642,31 @@ export default function Home() {
               </div>
             </section>
 
+            {/* LICORERÍAS CERCA DE TI — sección en home normal */}
+            {licorerias.length > 0 && (
+              <section className="mb-7">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-white font-bold text-base flex items-center gap-2">
+                    🍾 Licorerías cerca de ti
+                  </h2>
+                  <button
+                    onClick={() => licoreriaType && setSelectedType(licoreriaType.id)}
+                    className="flex items-center gap-1 text-green-400 text-xs font-semibold">
+                    Ver todas <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                  {licorerias.slice(0, 6).map((venue, i) => (
+                    <motion.div key={venue.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }} className="flex-shrink-0 w-72">
+                      <LicoreriaCard venue={venue} />
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* TODOS LOS LOCALES */}
             <section ref={allVenuesRef} className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -567,6 +728,7 @@ export default function Home() {
           </>
         )}
 
+        {/* FOOTER */}
         <div className="text-center pt-8 mt-4 border-t border-[#1a1a1a]">
           <p className="text-gray-700 text-xs mb-2">© 2026 JapiNait · Todos los derechos reservados</p>
           <div className="flex items-center justify-center gap-4">
