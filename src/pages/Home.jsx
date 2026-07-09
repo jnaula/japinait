@@ -655,10 +655,10 @@ export default function Home() {
                     Ver todas <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
-                <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
                   {licorerias.slice(0, 6).map((venue, i) => (
                     <motion.div key={venue.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }} className="flex-shrink-0 w-72">
+                      transition={{ delay: i * 0.05 }} className="flex-shrink-0" style={{ width: '80vw', maxWidth: 300 }}>
                       <LicoreriaCard venue={venue} />
                     </motion.div>
                   ))}
