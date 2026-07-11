@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, ChevronRight, ChevronUp, ArrowLeft, Share2, Tag } from 'lucide-react';
+import { Search, MapPin, ChevronRight, ChevronUp, ArrowLeft, Share2, Tag, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import VenueCard from '../components/venue/VenueCard';
 
@@ -100,7 +100,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('venues')
-        .select('*, venue_types(name), venue_photos(photo_url, is_primary)')
+        .select('*, venue_types(name), venue_photos(photo_url, is_primary), promotions(title)')
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -507,8 +507,7 @@ export default function Home() {
             {(() => {
               const nonLicVenues = venues.filter((v) => v.venue_types?.name !== 'Licorería');
               return (
-                <section ref={allVenuesRef} className="mb-8">
-                  <div className="flex items-center justify-between mb-4">
+                <section ref={allVenuesRef} className="mb-8">                  <div className="flex items-center justify-between mb-4">
                     <div>
                       <h2 className="text-white font-bold text-base">Todos los locales</h2>
                       <p className="text-gray-500 text-xs mt-0.5">{nonLicVenues.length} locales disponibles</p>
@@ -568,6 +567,33 @@ export default function Home() {
                 </section>
               );
             })()}
+
+            {/* LICORERÍAS CERCA DE TI — carrusel */}
+            {(() => {
+              const licorerias = venues.filter((v) => v.venue_types?.name === 'Licorería');
+              const licType = venueTypes.find((t) => t.name === 'Licorería');
+              if (licorerias.length === 0) return null;
+              return (
+                <section className="mb-8">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-white font-bold text-base">🍾 Licorerías cerca de ti</h2>
+                    <button onClick={() => licType && setSelectedType(licType.id)}
+                      className="flex items-center gap-1 text-green-400 text-xs font-semibold">
+                      Ver todas <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
+                    {licorerias.map((venue, i) => (
+                      <motion.div key={venue.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex-shrink-0" style={{ width: '72vw', maxWidth: 280 }}>
+                        <LicoreriaCard venue={venue} />
+                      </motion.div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })()}
           </>
         )}
 
@@ -588,6 +614,57 @@ export default function Home() {
 
       </div>
     </div>
+  );
+}
+
+const PRODUCT_EMOJIS = {
+  Cervezas: '🍺', Whisky: '🥃', Ron: '🍹', Vodka: '🍸', Vino: '🍷',
+  Tequila: '🥂', Aguardiente: '🌿', Energizantes: '⚡', Hielo: '🧊',
+  Snacks: '🍟', Cigarrillos: '🚬', Otros: '📦',
+};
+
+function LicoreriaCard({ venue }) {
+  const navigate = useNavigate();
+  const products = venue.available_products || [];
+  const promoLabel = venue.promotions?.[0]?.title || null;
+  const phone = venue.phone || '';
+  return (
+    <motion.div whileTap={{ scale: 0.97 }} onClick={() => navigate(`/venue/${venue.id}`)}
+      className="flex flex-col bg-[#0d1f0d] border border-[#1a3a1a] rounded-2xl overflow-hidden cursor-pointer hover:border-green-700/60 transition-colors h-full">
+      <div className="relative h-32 bg-[#1a2a1a] flex-shrink-0">
+        {venue.primary_photo
+          ? <img src={venue.primary_photo} alt={venue.name} className="w-full h-full object-cover" />
+          : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a2a0a] to-[#051205]">
+              <span className="text-4xl">🍾</span>
+            </div>}
+        {venue.has_delivery && (
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-green-600 text-white text-[10px] font-bold">
+            DELIVERY
+          </div>
+        )}
+      </div>
+      <div className="p-3 flex flex-col gap-1.5 flex-1">
+        <p className="text-white font-bold text-sm leading-tight">{venue.name}</p>
+        {venue.has_delivery
+          ? <p className="text-green-400 text-xs font-semibold">🛵 Delivery disponible</p>
+          : <p className="text-gray-600 text-xs">Sin delivery</p>}
+        {products.length > 0 && (
+          <p className="text-gray-400 text-xs truncate">
+            {products.slice(0, 3).map((p) => `${PRODUCT_EMOJIS[p] || '📦'} ${p}`).join(' · ')}
+          </p>
+        )}
+        {promoLabel && (
+          <span className="inline-block self-start px-2 py-0.5 rounded-full text-[11px] font-bold text-white bg-[#ff6b00]">
+            🔥 {promoLabel}
+          </span>
+        )}
+        {phone && (
+          <p className="text-gray-500 text-xs flex items-center gap-1 mt-auto pt-1">
+            <Phone className="w-3 h-3" /> {phone}
+          </p>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
