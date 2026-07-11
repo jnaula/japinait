@@ -1,8 +1,19 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Trash2, Plus, X, Crown, Tag, Pencil } from 'lucide-react';
+import { Trash2, Plus, X, Crown, Tag, Pencil, Phone } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
+import OpeningHoursEditor from '../components/venue/OpeningHoursEditor';
+
+const DEFAULT_HOURS = {
+  monday: { open: '18:00', close: '02:00' },
+  tuesday: { open: '18:00', close: '02:00' },
+  wednesday: { open: '18:00', close: '02:00' },
+  thursday: { open: '18:00', close: '02:00' },
+  friday: { open: '18:00', close: '03:00' },
+  saturday: { open: '18:00', close: '03:00' },
+  sunday: { open: null, close: null },
+};
 
 export default function EditVenue() {
   const { id } = useParams();
@@ -15,23 +26,22 @@ export default function EditVenue() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState(''); // ✅ teléfono
   const [venueType, setVenueType] = useState('');
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
+  const [openingHours, setOpeningHours] = useState(DEFAULT_HOURS); // ✅ horarios
 
   const [photos, setPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
   const [primaryPhoto, setPrimaryPhoto] = useState(null);
 
-  // Promociones
   const [promotions, setPromotions] = useState([]);
   const [newPromoTitle, setNewPromoTitle] = useState('');
   const [newPromoDescription, setNewPromoDescription] = useState('');
   const [addingPromo, setAddingPromo] = useState(false);
   const [showPromoForm, setShowPromoForm] = useState(false);
-
-  // Edición de promociones
   const [editingPromo, setEditingPromo] = useState(null);
   const [editPromoTitle, setEditPromoTitle] = useState('');
   const [editPromoDescription, setEditPromoDescription] = useState('');
@@ -53,13 +63,23 @@ export default function EditVenue() {
       if (error) throw error;
 
       setVenue(data);
-      setName(data.name);
-      setDescription(data.description);
-      setAddress(data.address);
-      setVenueType(data.venue_type_id);
+      setName(data.name || '');
+      setDescription(data.description || '');
+      setAddress(data.address || '');
+      setPhone(data.phone || ''); // ✅
+      setVenueType(data.venue_type_id || '');
+
       if (data.latitude && data.longitude) {
         setLatitude(data.latitude);
         setLongitude(data.longitude);
+      }
+
+      // ✅ Cargar horarios guardados o usar defaults
+      if (data.opening_hours) {
+        const parsed = typeof data.opening_hours === 'string'
+          ? JSON.parse(data.opening_hours)
+          : data.opening_hours;
+        setOpeningHours({ ...DEFAULT_HOURS, ...parsed });
       }
 
       const { data: photosData } = await supabase
@@ -153,47 +173,55 @@ export default function EditVenue() {
   };
 
   const handleUpdate = async () => {
-  if (!name || !address || !venueType)
-    return alert('Completa nombre, dirección y tipo de local');
+    if (!name || !address || !venueType)
+      return alert('Completa nombre, dirección y tipo de local');
 
-  setSaving(true); // ✅
-  try {
-    const { error } = await supabase
-      .from('venues')
-      .update({ name, description, address, venue_type_id: venueType, latitude, longitude })
-      .eq('id', id);
-    if (error) throw error;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('venues')
+        .update({
+          name,
+          description,
+          address,
+          phone,                                        // ✅
+          venue_type_id: venueType,
+          latitude,
+          longitude,
+          opening_hours: JSON.stringify(openingHours), // ✅
+        })
+        .eq('id', id);
+      if (error) throw error;
 
-    for (const photo of existingPhotos) {
-      const isPrimary = primaryPhoto === `existing-${photo.id}`;
-      await supabase.from('venue_photos').update({ is_primary: isPrimary }).eq('id', photo.id);
-    }
-
-    for (let i = 0; i < photos.length; i++) {
-      const file = photos[i];
-      const fileName = `${id}/${Date.now()}_${file.name}`;
-      const isPrimary = primaryPhoto === `new-${i}`;
-      const { error: uploadError } = await supabase.storage.from('venue-photos').upload(fileName, file);
-      if (!uploadError) {
-        await supabase.from('venue_photos').insert({ venue_id: id, photo_url: fileName, is_primary: isPrimary });
+      for (const photo of existingPhotos) {
+        const isPrimary = primaryPhoto === `existing-${photo.id}`;
+        await supabase.from('venue_photos').update({ is_primary: isPrimary }).eq('id', photo.id);
       }
-    }
 
-    photoPreviews.forEach((url) => URL.revokeObjectURL(url));
-    alert('Local actualizado 🔥');
-    navigate(`/venue/${id}`);
-  } catch (err) {
-    // ✅ Manejo de sesión expirada
-    if (err?.message?.includes('JWT') || err?.message?.includes('session')) {
-      alert('Tu sesión expiró. Por favor inicia sesión de nuevo.');
-      navigate('/login');
-    } else {
-      alert('Error al actualizar: ' + err.message);
+      for (let i = 0; i < photos.length; i++) {
+        const file = photos[i];
+        const fileName = `${id}/${Date.now()}_${file.name}`;
+        const isPrimary = primaryPhoto === `new-${i}`;
+        const { error: uploadError } = await supabase.storage.from('venue-photos').upload(fileName, file);
+        if (!uploadError) {
+          await supabase.from('venue_photos').insert({ venue_id: id, photo_url: fileName, is_primary: isPrimary });
+        }
+      }
+
+      photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+      alert('Local actualizado 🔥');
+      navigate(`/venue/${id}`);
+    } catch (err) {
+      if (err?.message?.includes('JWT') || err?.message?.includes('session')) {
+        alert('Tu sesión expiró. Por favor inicia sesión de nuevo.');
+        navigate('/login');
+      } else {
+        alert('Error al actualizar: ' + err.message);
+      }
+    } finally {
+      setSaving(false);
     }
-  } finally {
-    setSaving(false); // ✅
-  }
-};
+  };
 
   const handleDeletePhoto = async (photoId) => {
     if (!confirm('¿Eliminar foto?')) return;
@@ -211,6 +239,7 @@ export default function EditVenue() {
     <div className="min-h-screen bg-black text-white p-4 max-w-3xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold mb-4">Editar Local</h1>
 
+      {/* Nombre */}
       <input
         type="text"
         value={name}
@@ -219,6 +248,7 @@ export default function EditVenue() {
         className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
       />
 
+      {/* Descripción */}
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
@@ -227,6 +257,19 @@ export default function EditVenue() {
         className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
       />
 
+      {/* Teléfono ✅ */}
+      <div className="relative">
+        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Teléfono (ej: +593 99 123 4567)"
+          className="w-full pl-10 pr-4 p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
+        />
+      </div>
+
+      {/* Dirección */}
       <input
         type="text"
         value={address}
@@ -235,6 +278,7 @@ export default function EditVenue() {
         className="w-full p-3 rounded-lg bg-[#111] border border-[#222] focus:outline-none focus:border-[#ff0080]"
       />
 
+      {/* Tipo de local */}
       <select
         value={venueType}
         onChange={(e) => setVenueType(e.target.value)}
@@ -246,6 +290,7 @@ export default function EditVenue() {
         ))}
       </select>
 
+      {/* ✅ Mapa — solo carga cuando ya tenemos coordenadas del venue */}
       {latitude && longitude && (
         <MapPicker
           location={{ lat: latitude, lng: longitude }}
@@ -253,6 +298,12 @@ export default function EditVenue() {
           onAddressChange={(addr) => setAddress(addr)}
         />
       )}
+
+      {/* ✅ Horarios */}
+      <OpeningHoursEditor
+        value={openingHours}
+        onChange={setOpeningHours}
+      />
 
       {/* SECCIÓN PROMOCIONES */}
       <div className="border border-[#222] rounded-xl overflow-hidden">
@@ -275,7 +326,6 @@ export default function EditVenue() {
           </button>
         </div>
 
-        {/* Formulario nueva promo */}
         {showPromoForm && (
           <div className="p-4 border-t border-[#222] bg-[#0a0a0a] space-y-3">
             <input
@@ -310,13 +360,11 @@ export default function EditVenue() {
           </div>
         )}
 
-        {/* Lista de promos */}
         {promotions.length > 0 && (
           <div className="divide-y divide-[#222]">
             {promotions.map((promo) => (
               <div key={promo.id} className="p-4 bg-[#0a0a0a]">
                 {editingPromo === promo.id ? (
-                  // Modo edición
                   <div className="space-y-3">
                     <input
                       type="text"
@@ -348,7 +396,6 @@ export default function EditVenue() {
                     </div>
                   </div>
                 ) : (
-                  // Modo vista
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -477,21 +524,21 @@ export default function EditVenue() {
         )}
       </div>
 
+      {/* Botón guardar */}
       <button
-  onClick={handleUpdate}
-  disabled={saving}
-  className="w-full py-3 mt-4 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
->
-  {saving ? (
-    <div className="flex items-center justify-center space-x-2">
-      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-      <span>Guardando...</span>
-    </div>
-  ) : (
-    'Guardar cambios'
-  )}
-</button>
+        onClick={handleUpdate}
+        disabled={saving}
+        className="w-full py-3 mt-4 rounded-lg bg-[#ff0080] hover:bg-[#e60073] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {saving ? (
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span>Guardando...</span>
+          </div>
+        ) : (
+          'Guardar cambios'
+        )}
+      </button>
     </div>
   );
 }
-
