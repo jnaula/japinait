@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Edit, ChevronLeft, ChevronRight, X, Tag, Phone, MessageCircle } from 'lucide-react';
+import {
+  MapPin, Star, Heart, Clock, DollarSign, Music, ArrowLeft, Edit,
+  ChevronLeft, ChevronRight, X, Tag, Phone, MessageCircle, Share2,
+  Navigation, CheckCircle2, Truck, Package, CreditCard
+} from 'lucide-react';
 import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { getVenueConfig } from '../config/venueTypeConfig';
+import VenueTypeDetails from '../components/venue/VenueTypeDetails';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBBy7nFUipYZ1FDegs-SsgZ9d7ViAZqInI';
 
 const PRODUCT_EMOJIS = {
   Cervezas: '🍺', Whisky: '🥃', Ron: '🍹', Vodka: '🍸', Vino: '🍷',
-  Tequila: '🥂', Aguardiente: '🌿', Energizantes: '⚡', Hielo: '🧊',
-  Snacks: '🍟', Cigarrillos: '🚬', Otros: '📦',
+  Tequila: '🥂', Energizantes: '⚡', Hielo: '🧊', Snacks: '🍟',
 };
 
 const darkMapStyle = [
@@ -47,6 +52,36 @@ function parseOpeningHours(raw) {
   return raw;
 }
 
+// ── Calcula si está abierto ahora ────────────────────────────────────────────
+function isOpenNow(openingHours) {
+  if (!openingHours) return null;
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const now = new Date();
+  const dayKey = days[now.getDay()];
+  const hours = openingHours[dayKey];
+  if (!hours?.open || !hours?.close) return false;
+
+  const [oh, om] = hours.open.split(':').map(Number);
+  const [ch, cm] = hours.close.split(':').map(Number);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const openMinutes = oh * 60 + om;
+  let closeMinutes = ch * 60 + cm;
+  if (closeMinutes < openMinutes) closeMinutes += 24 * 60; // cierre después de medianoche
+
+  return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+}
+
+// ── Obtiene el horario de hoy ─────────────────────────────────────────────────
+function getTodayHours(openingHours) {
+  if (!openingHours) return null;
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayKey = days[new Date().getDay()];
+  const hours = openingHours[dayKey];
+  if (!hours?.open || !hours?.close) return null;
+  return `${hours.open} - ${hours.close}`;
+}
+
+// ── Mapa ──────────────────────────────────────────────────────────────────────
 function VenueMapContent({ venueLat, venueLng, onUserLocation }) {
   const map = useMap();
   const [userLocation, setUserLocation] = useState(null);
@@ -58,23 +93,11 @@ function VenueMapContent({ venueLat, venueLng, onUserLocation }) {
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
         () => resolve(null),
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     });
-    const tryNetwork = async () => {
-      try {
-        const res = await fetch(`https://www.googleapis.com/geolocation/v1/geolocate?key=${GOOGLE_MAPS_API_KEY}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ considerIp: true }),
-        });
-        const data = await res.json();
-        if (data.location) return { lat: data.location.lat, lng: data.location.lng };
-        return null;
-      } catch { return null; }
-    };
     (async () => {
-      let coords = await tryNative();
-      if (!coords) coords = await tryNetwork();
+      const coords = await tryNative();
       if (!coords) return;
       setUserLocation(coords);
       onUserLocation(coords);
@@ -103,6 +126,22 @@ function VenueMapContent({ venueLat, venueLng, onUserLocation }) {
   );
 }
 
+// ── Chip de info rápida ───────────────────────────────────────────────────────
+function QuickChip({ icon, label, value, onClick }) {
+  const content = (
+    <div
+      className={`flex flex-col items-center justify-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl min-w-[72px] ${onClick ? 'cursor-pointer hover:border-[#7928ca]/40 transition-colors' : ''}`}
+      onClick={onClick}
+    >
+      <span className="text-base">{icon}</span>
+      <span className="text-gray-500 text-[10px] font-medium leading-none">{label}</span>
+      <span className="text-white text-[11px] font-semibold text-center leading-tight">{value}</span>
+    </div>
+  );
+  return content;
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function VenueDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -122,7 +161,7 @@ export default function VenueDetail() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [showHours, setShowHours] = useState(false);
-
+  const [descExpanded, setDescExpanded] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -131,15 +170,11 @@ export default function VenueDetail() {
   const touchStartX = useRef(null);
   const lightboxTouchStartX = useRef(null);
   const isOwner = user && venue && venue.owner_id === user.id;
-
-  // Detecta licorería
-  const isLicoreria = venue?.venue_types?.name === 'Licorería';
+  const isLicoreria = venue?.venue_types?.name?.toLowerCase().includes('licor');
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [id]);
   useEffect(() => { fetchVenueDetails(); }, [id]);
-  useEffect(() => {
-    if (user) { fetchUserRole(); checkFavorite(); }
-  }, [user, id]);
+  useEffect(() => { if (user) { fetchUserRole(); checkFavorite(); } }, [user, id]);
   useEffect(() => {
     if (photos.length === 0) return;
     const urls = photos.map((p) => supabase.storage.from('venue-photos').getPublicUrl(p.photo_url).data.publicUrl);
@@ -155,7 +190,6 @@ export default function VenueDetail() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [lightboxIndex, photoUrls.length]);
-
   useEffect(() => {
     if (user && reviews.length > 0) {
       const existing = reviews.find((r) => r.user_id === user.id);
@@ -196,22 +230,21 @@ export default function VenueDetail() {
 
   const checkFavorite = async () => {
     try {
-      const { data, error } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('venue_id', id).single();
+      const { data, error } = await supabase.from('user_favorites').select('id').eq('user_id', user.id).eq('venue_id', id).single();
       if (data && !error) setIsFavorite(true);
     } catch {}
   };
 
-  const toggleFavorite = async (e) => {
-    e.preventDefault(); e.stopPropagation();
+  const toggleFavorite = async () => {
     if (!user) { alert('Por favor inicia sesión para agregar favoritos'); return; }
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
-        const { error } = await supabase.from('user_favorites').delete().eq('user_id', user.id).eq('venue_id', venue.id);
-        if (!error) setIsFavorite(false);
+        await supabase.from('user_favorites').delete().eq('user_id', user.id).eq('venue_id', venue.id);
+        setIsFavorite(false);
       } else {
-        const { error } = await supabase.from('user_favorites').insert({ user_id: user.id, venue_id: venue.id });
-        if (!error) setIsFavorite(true);
+        await supabase.from('user_favorites').insert({ user_id: user.id, venue_id: venue.id });
+        setIsFavorite(true);
       }
     } catch (err) { console.error(err); } finally { setFavoriteLoading(false); }
   };
@@ -229,11 +262,8 @@ export default function VenueDetail() {
       setUserRating(selectedRating);
       fetchVenueDetails();
     } catch (err) {
-      console.error(err);
       alert('Error al guardar la calificación');
-    } finally {
-      setSubmittingRating(false);
-    }
+    } finally { setSubmittingRating(false); }
   };
 
   const handleHeroTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
@@ -260,7 +290,7 @@ export default function VenueDetail() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[#ff0080] border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-[#7928ca] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -274,6 +304,9 @@ export default function VenueDetail() {
 
   const openingHours = parseOpeningHours(venue.opening_hours);
   const hasHours = openingHours && Object.values(openingHours).some((h) => h?.open && h?.close);
+  const openStatus = hasHours ? isOpenNow(openingHours) : null;
+  const todayHours = hasHours ? getTodayHours(openingHours) : null;
+
   const directionsUrl = userLocation
     ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${venue.latitude},${venue.longitude}`
     : `https://www.google.com/maps/dir/?api=1&destination=${venue.latitude},${venue.longitude}`;
@@ -284,155 +317,328 @@ export default function VenueDetail() {
   const displayRating = venue.average_rating > 0 ? venue.average_rating.toFixed(1) : avgRating;
   const displayReviews = venue.total_reviews || reviews.length;
 
-  // Helpers para licorería
   const phoneClean = venue.phone?.replace(/\s/g, '') || '';
 
-  const normalizeWhatsapp = (raw) => {
+  // Normaliza cualquier formato ecuatoriano a internacional sin +
+  // 0999123456 → 593999123456
+  // +593999123456 → 593999123456
+  // 099 912 3456 → 593999123456
+  function normalizeEcPhone(raw) {
     if (!raw) return '';
-    let n = raw.replace(/[\s\-().]/g, '');
-    if (n.startsWith('+')) n = n.slice(1);        // +593... → 593...
-    if (n.startsWith('00')) n = n.slice(2);        // 00593... → 593...
-    if (n.startsWith('0')) n = '593' + n.slice(1); // 09... → 5939...
-    return n;
-  };
+    const digits = raw.replace(/\D/g, '');
+    if (digits.startsWith('593')) return digits;
+    if (digits.startsWith('0')) return '593' + digits.slice(1);
+    if (digits.length >= 9) return '593' + digits;
+    return digits;
+  }
 
-  const whatsappNormalized = normalizeWhatsapp(venue.whatsapp);
-  const whatsappUrl = whatsappNormalized ? `https://wa.me/${whatsappNormalized}` : null;
+  const whatsappNumber = normalizeEcPhone(venue.whatsapp || venue.phone);
+  const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null;
+
+  const venueDetails = venue.venue_details || {};
+  const venueConfig = getVenueConfig(venue.venue_types?.name);
+
+  // Descripción con "Ver más"
+  const DESC_LIMIT = 120;
+  const desc = venue.description || '';
+  const descNeedsExpand = desc.length > DESC_LIMIT;
+  const descShown = descExpanded || !descNeedsExpand ? desc : desc.slice(0, DESC_LIMIT) + '...';
+
+  // Primera promo destacada
+  const featuredPromo = promotions[0] || null;
+
+  // Quick info chips según tipo
+  const quickChips = [];
+  if (todayHours) quickChips.push({ icon: '🕐', label: 'Horario', value: todayHours, action: () => setShowHours(true) });
+  if (venueDetails.cover) quickChips.push({ icon: '🎫', label: 'Cover', value: venueDetails.cover });
+  if (venue.music_type || venueDetails.genero_musical) quickChips.push({ icon: '🎵', label: 'Música', value: venue.music_type || venueDetails.genero_musical });
+  if (venueDetails.ambiente) quickChips.push({ icon: '🔥', label: 'Ambiente', value: venueDetails.ambiente });
+  if (venueDetails.codigo_vestimenta) quickChips.push({ icon: '👔', label: 'Dress Code', value: venueDetails.codigo_vestimenta });
+  if (venueDetails.dj_residente) quickChips.push({ icon: '🎧', label: 'DJ', value: venueDetails.dj_residente });
+  if (venueDetails.vista_panoramica) quickChips.push({ icon: '🌆', label: 'Vista', value: venueDetails.vista_panoramica });
+  if (venueDetails.happy_hour) quickChips.push({ icon: '🍺', label: 'Happy Hour', value: venueDetails.happy_hour });
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
 
-      {/* HERO */}
-      <div className="relative h-96 bg-[#1a1a1a] overflow-hidden select-none" onTouchStart={handleHeroTouchStart} onTouchEnd={handleHeroTouchEnd}>
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <div
+        className="relative bg-[#161616] overflow-hidden select-none"
+        style={{ height: 280 }}
+        onTouchStart={handleHeroTouchStart}
+        onTouchEnd={handleHeroTouchEnd}
+      >
         {photoUrls.length > 0 ? (
           <>
             <AnimatePresence mode="wait">
-              <motion.img key={heroIndex} src={photoUrls[heroIndex]} alt={venue.name}
-                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.25 }} onClick={() => setLightboxIndex(heroIndex)}
-                className="w-full h-full object-cover absolute inset-0 cursor-zoom-in" />
+              <motion.img
+                key={heroIndex}
+                src={photoUrls[heroIndex]}
+                alt={venue.name}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setLightboxIndex(heroIndex)}
+                className="w-full h-full object-cover absolute inset-0 cursor-zoom-in"
+              />
             </AnimatePresence>
-            {photoUrls.length > 1 && (
-              <>
-                <button onClick={(e) => { e.stopPropagation(); setHeroIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length); }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors">
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setHeroIndex((i) => (i + 1) % photoUrls.length); }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
-                  {photoUrls.map((_, i) => (
-                    <button key={i} onClick={(e) => { e.stopPropagation(); setHeroIndex(i); }}
-                      className={`w-2 h-2 rounded-full transition-all ${i === heroIndex ? 'bg-white scale-125' : 'bg-white/40'}`} />
-                  ))}
-                </div>
-                <div className="absolute bottom-16 right-6 z-10 text-xs text-white/70 bg-black/40 px-2 py-1 rounded-full">
-                  {heroIndex + 1} / {photoUrls.length}
-                </div>
-              </>
-            )}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 text-xs text-white/50">Toca la foto para ampliar</div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-black/30 pointer-events-none" />
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff0080] to-[#7928ca] opacity-20">
-            <MapPin className="w-32 h-32 text-white" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#7928ca]/30 to-[#ff0080]/20">
+            <MapPin className="w-20 h-20 text-white/20" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-6 left-6 z-10">
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-white hover:bg-black/70">
-            <ArrowLeft className="w-5 h-5" /><span>Volver</span>
+
+        {/* Botones top */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 z-10">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate(-1)}
+            className="p-2.5 rounded-full bg-black/50 backdrop-blur-sm text-white"
+          >
+            <ArrowLeft className="w-5 h-5" />
           </motion.button>
-        </div>
-        <div className="absolute top-6 right-6 flex items-center space-x-2 z-10">
-          {userRole === 'venue_admin' && isOwner && (
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => navigate(`/edit-venue/${venue.id}`)}
-              className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70">
-              <Edit className="w-6 h-6 text-white" />  {/* Edit imported from lucide */}
+
+          <div className="flex items-center gap-2">
+            {userRole === 'venue_admin' && isOwner && (
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate(`/edit-venue/${venue.id}`)}
+                className="p-2.5 rounded-full bg-black/50 backdrop-blur-sm text-white">
+                <Edit className="w-5 h-5" />
+              </motion.button>
+            )}
+            <motion.button whileTap={{ scale: 0.9 }}
+              className="p-2.5 rounded-full bg-black/50 backdrop-blur-sm text-white">
+              <Share2 className="w-5 h-5" />
             </motion.button>
-          )}
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={toggleFavorite}
-            disabled={favoriteLoading} className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 disabled:opacity-50">
-            <Heart className={`w-6 h-6 ${isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'}`} />
-          </motion.button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={toggleFavorite} disabled={favoriteLoading}
+              className="p-2.5 rounded-full bg-black/50 backdrop-blur-sm disabled:opacity-50">
+              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-[#ff0080] text-[#ff0080]' : 'text-white'}`} />
+            </motion.button>
+          </div>
         </div>
+
+        {/* Badge abierto/cerrado */}
+        {openStatus !== null && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              openStatus
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500/80 text-white'
+            }`}>
+              {openStatus ? 'ABIERTO' : 'CERRADO'}
+            </span>
+          </div>
+        )}
+
+        {/* Miniaturas de fotos (estilo referencia) */}
+        {photoUrls.length > 1 && (
+          <div className="absolute bottom-3 left-4 right-4 z-10 flex gap-2">
+            {photoUrls.slice(0, 4).map((url, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setHeroIndex(i); setLightboxIndex(i); }}
+                className={`relative flex-1 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                  i === heroIndex ? 'border-white' : 'border-transparent opacity-70'
+                }`}
+              >
+                <img src={url} alt="" className="w-full h-full object-cover" />
+                {i === 3 && photoUrls.length > 4 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">+{photoUrls.length - 4}</span>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* CONTENIDO */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      {/* ── CONTENIDO ────────────────────────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto px-4 pt-4 pb-10">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
 
-          {/* Nombre + rating */}
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">{venue.name}</h1>
-              {venue.venue_types && (
-                <span className="inline-block px-3 py-1 rounded-full bg-[#7928ca]/20 text-[#7928ca] border border-[#7928ca]/30 text-sm">
-                  {venue.venue_types.name}
-                </span>
-              )}
-            </div>
-            {displayRating && (
-              <div className="flex items-center space-x-2 bg-[#0f0f0f] border border-[#1a1a1a] rounded-lg px-4 py-2">
-                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                <span className="text-xl font-bold text-white">{displayRating}</span>
-                <span className="text-gray-400 text-sm">({displayReviews})</span>
+          {/* Nombre + tipo + rating */}
+          <div className="mb-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-white">{venue.name}</h1>
+                  <CheckCircle2 className="w-5 h-5 text-[#7928ca] flex-shrink-0" />
+                </div>
+                {venue.venue_types && (
+                  <p className="text-[#7928ca] font-semibold text-sm mt-0.5">{venue.venue_types.name}</p>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* ── LAYOUT LICORERÍA ── */}
-          {isLicoreria ? (
-            <div className="space-y-6">
-
-              {/* Descripción */}
-              {venue.description && (
-                <div className="text-gray-300 text-base space-y-2">
-                  {venue.description.split('\n').filter((l) => l.trim() !== '').map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
+            {/* Rating + dirección */}
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              {displayRating && (
+                <div className="flex items-center gap-1">
+                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  <span className="text-white font-bold text-sm">{displayRating}</span>
+                  <span className="text-gray-500 text-xs">({displayReviews} opiniones)</span>
                 </div>
               )}
+              {venue.address && (
+                <div className="flex items-center gap-1 text-gray-500 text-xs">
+                  <span>·</span>
+                  <MapPin className="w-3 h-3" />
+                  <span className="line-clamp-1">{venue.address}</span>
+                </div>
+              )}
+            </div>
+          </div>
 
-              {/* Estado abierto + delivery como badges inline */}
-              <div className="flex flex-wrap gap-2">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">
-                  <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-                  Abierto ahora
-                </span>
-                {venue.has_delivery && (
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7928ca]/10 border border-[#7928ca]/30 text-purple-300 text-sm font-medium">
-                    🛵 Delivery Disponible
-                  </span>
+          {/* ── BOTONES DE ACCIÓN ── */}
+          <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {phoneClean && (
+              <a href={`tel:${phoneClean}`}
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white"
+                style={{ background: 'linear-gradient(90deg, #7928ca, #9b59b6)' }}>
+                <Phone className="w-4 h-4" /> Llamar
+              </a>
+            )}
+            {whatsappUrl && (
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#25d366]">
+                <MessageCircle className="w-4 h-4" /> WhatsApp
+              </a>
+            )}
+            <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#7928ca]/50 transition-colors">
+              <Navigation className="w-4 h-4 text-[#7928ca]" /> Cómo llegar
+            </a>
+            <button
+              onClick={toggleFavorite}
+              disabled={favoriteLoading}
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border transition-colors ${
+                isFavorite
+                  ? 'bg-[#ff0080]/10 border-[#ff0080]/40 text-[#ff0080]'
+                  : 'bg-[#1a1a1a] border-[#2a2a2a] text-white'
+              }`}>
+              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-[#ff0080]' : ''}`} />
+              {isFavorite ? 'Guardado' : 'Favorito'}
+            </button>
+          </div>
+
+          {/* ── BANNER PROMOCIÓN DESTACADA ── */}
+          {!isLicoreria && featuredPromo && (
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowPromotions(true)}
+              className="w-full text-left mb-5 rounded-2xl overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1060 100%)' }}
+            >
+              <div className="px-4 py-3 border-b border-white/5">
+                <p className="text-[#ff0080] text-xs font-bold uppercase tracking-widest flex items-center gap-1.5">
+                  🔥 PROMOCIÓN DESTACADA
+                </p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-[#ff0080] text-xl font-black uppercase leading-tight">{featuredPromo.title}</p>
+                {featuredPromo.description && (
+                  <p className="text-gray-400 text-sm mt-1">{featuredPromo.description}</p>
+                )}
+              </div>
+            </motion.button>
+          )}
+
+          {/* ── INFORMACIÓN RÁPIDA (chips) ── */}
+          {!isLicoreria && quickChips.length > 0 && (
+            <div className="mb-5">
+              <p className="text-white font-bold text-base mb-3">Información rápida</p>
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                {quickChips.map((chip, i) => (
+                  <QuickChip
+                    key={i}
+                    icon={chip.icon}
+                    label={chip.label}
+                    value={chip.value}
+                    onClick={chip.action}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── DESCRIPCIÓN ── */}
+          {desc && (
+            <div className="mb-5">
+              <p className="text-white font-bold text-base mb-2">Descripción</p>
+              <div className="flex items-end gap-2">
+                <p className="text-gray-400 text-sm leading-relaxed flex-1">
+                  {descShown}
+                </p>
+                {descNeedsExpand && (
+                  <button
+                    onClick={() => setDescExpanded(!descExpanded)}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs font-semibold whitespace-nowrap"
+                  >
+                    {descExpanded ? 'Ver menos' : 'Ver más'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── CAMPOS ESPECÍFICOS DEL TIPO (VenueTypeDetails) ── */}
+          {!isLicoreria && Object.keys(venueDetails).length > 0 && (
+            <div className="mb-5">
+              <VenueTypeDetails
+                venueTypeName={venue.venue_types?.name}
+                venueDetails={venueDetails}
+              />
+            </div>
+          )}
+
+          {/* ── LAYOUT LICORERÍA ── */}
+          {isLicoreria && (
+            <div className="space-y-4 mb-5">
+
+              {/* Servicios de entrega */}
+              <div className="grid grid-cols-3 gap-2">
+                {venueDetails.delivery && (
+                  <div className="flex flex-col items-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl">
+                    <Truck className="w-5 h-5 text-[#7928ca]" />
+                    <span className="text-white text-xs font-semibold text-center">Delivery</span>
+                  </div>
+                )}
+                {venueDetails.compra_en_tienda && (
+                  <div className="flex flex-col items-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl">
+                    <Package className="w-5 h-5 text-[#7928ca]" />
+                    <span className="text-white text-xs font-semibold text-center">En tienda</span>
+                  </div>
+                )}
+                {venueDetails.recoge_en_local && (
+                  <div className="flex flex-col items-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl">
+                    <MapPin className="w-5 h-5 text-[#7928ca]" />
+                    <span className="text-white text-xs font-semibold text-center">Recoge aquí</span>
+                  </div>
                 )}
               </div>
 
-              {/* Promociones — bloque destacado */}
-              {promotions.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#ff0080]">🔥 Promociones</p>
-                  {promotions.map((promo) => (
-                    <div key={promo.id} className="bg-[#0f0f0f] border border-[#ff0080]/20 rounded-xl p-4">
-                      <p className="text-white font-semibold">{promo.title}</p>
-                      {promo.description && (
-                        <p className="text-gray-400 text-sm mt-1 whitespace-pre-line">{promo.description}</p>
-                      )}
-                    </div>
-                  ))}
+              {/* Tiempo estimado */}
+              {venueDetails.tiempo_estimado && (
+                <div className="flex items-center gap-3 p-4 bg-[#161616] border border-[#242424] rounded-xl">
+                  <Clock className="w-5 h-5 text-[#7928ca] flex-shrink-0" />
+                  <div>
+                    <p className="text-gray-500 text-xs">Tiempo estimado</p>
+                    <p className="text-white font-semibold text-sm">{venueDetails.tiempo_estimado}</p>
+                  </div>
                 </div>
               )}
 
-              {/* Productos disponibles */}
-              {venue.available_products?.length > 0 && (
+              {/* Productos */}
+              {venueDetails.productos?.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">🍺 Productos</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {venue.available_products.map((product) => (
+                  <p className="text-white font-bold text-sm mb-3">Productos disponibles</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {venueDetails.productos.map((product) => (
                       <div key={product}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#0f0f0f] border border-[#1a1a1a] text-sm text-gray-200">
+                        className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#161616] border border-[#242424] text-sm text-white">
                         <span>{PRODUCT_EMOJIS[product] || '📦'}</span>
                         <span>{product}</span>
                       </div>
@@ -441,203 +647,167 @@ export default function VenueDetail() {
                 </div>
               )}
 
-              {/* Mapa */}
-              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">📍 Ubicación</p>
-                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-medium hover:opacity-90 transition-opacity">
-                    <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
-                  </a>
-                </div>
-                <div className="w-full h-64 rounded-lg overflow-hidden">
-                  <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
-                    mapId="nerd-venue-detail-map"
-                    options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
-                    className="w-full h-full">
-                    <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
-                  </Map>
-                </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
-              </div>
-
-              {/* Horario */}
-              {hasHours && (
-                <button onClick={() => setShowHours(true)}
-                  className="w-full bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors text-left">
-                  <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-widest">🕒 Horario</p>
-                    <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
-                  </div>
-                </button>
-              )}
-
-              {/* Teléfono / contacto */}
-              {(phoneClean || whatsappUrl) && (
-                <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4">
-                  <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">📱 Contacto</p>
-                  <div className="flex gap-3 flex-wrap">
-                    {phoneClean && (
-                      <a href={`tel:${phoneClean}`}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#7928ca]/50 transition-colors text-white text-sm font-medium">
-                        <Phone className="w-4 h-4 text-[#ff0080]" />
-                        Llamar
-                      </a>
-                    )}
-                    {whatsappUrl && (
-                      <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25d366]/10 border border-[#25d366]/30 hover:border-[#25d366]/60 transition-colors text-white text-sm font-medium">
-                        <MessageCircle className="w-4 h-4 text-[#25d366]" />
-                        WhatsApp
-                      </a>
-                    )}
+              {/* Métodos de pago */}
+              {venueDetails.metodos_pago?.length > 0 && (
+                <div>
+                  <p className="text-white font-bold text-sm mb-3">Métodos de pago</p>
+                  <div className="flex flex-wrap gap-2">
+                    {venueDetails.metodos_pago.map((method) => (
+                      <span key={method}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7928ca]/10 border border-[#7928ca]/20 text-purple-300 text-xs font-medium">
+                        <CreditCard className="w-3 h-3" /> {method}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
 
-            </div>
-          ) : (
-            /* ── LAYOUT NORMAL (bar, disco, etc.) ── */
-            <>
-              {venue.description && (
-                <div className="text-gray-300 text-lg mb-6 space-y-3">
-                  {venue.description.split('\n').filter((line) => line.trim() !== '').map((line, i) => (
-                    <p key={i}>{line}</p>
+              {/* Promociones licorería */}
+              {promotions.length > 0 && (
+                <div>
+                  <p className="text-[#ff0080] text-xs font-bold uppercase tracking-widest mb-2">🔥 Promociones</p>
+                  {promotions.map((promo) => (
+                    <div key={promo.id} className="bg-[#161616] border border-[#ff0080]/20 rounded-xl p-4 mb-2">
+                      <p className="text-white font-semibold">{promo.title}</p>
+                      {promo.description && <p className="text-gray-400 text-sm mt-1">{promo.description}</p>}
+                    </div>
                   ))}
                 </div>
               )}
+            </div>
+          )}
 
-              {user && userRole !== 'venue_admin' && (
-                <div className="mb-6 p-4 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl">
-                  <p className="text-gray-300 text-sm font-medium mb-3">
-                    {userExistingReview ? 'Tu calificación:' : '¿Cómo calificarías este local?'}
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <motion.button key={value} type="button" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
-                        disabled={submittingRating}
-                        onMouseEnter={() => setHoverRating(value)} onMouseLeave={() => setHoverRating(0)}
-                        onClick={() => handleSubmitRating(value)} className="disabled:opacity-50">
-                        <Star className={`w-8 h-8 transition-colors ${value <= (hoverRating || userRating) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'}`} />
-                      </motion.button>
-                    ))}
-                    {submittingRating && <div className="w-5 h-5 border-2 border-[#ff0080] border-t-transparent rounded-full animate-spin ml-2" />}
-                    {userExistingReview && !submittingRating && <span className="text-xs text-gray-500 ml-2">Toca para cambiar</span>}
-                  </div>
-                </div>
-              )}
-
-              {promotions.length > 0 && (
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPromotions(true)}
-                  className="flex items-center space-x-2 mb-6 px-5 py-3 rounded-xl bg-gradient-to-r from-[#ff0080]/20 to-[#7928ca]/20 border border-[#ff0080]/30 text-white hover:border-[#ff0080]/60 transition-all">
-                  <Tag className="w-5 h-5 text-[#ff0080]" />
-                  <span className="font-semibold">Ver promociones</span>
-                  <span className="ml-1 px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">{promotions.length}</span>
-                </motion.button>
-              )}
-
-              <div className="mb-8 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 overflow-hidden">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-5 h-5 text-[#ff0080]" />
-                    <h3 className="text-white font-bold">Ubicación</h3>
-                  </div>
-                  <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#ff0080] to-[#7928ca] text-white text-sm font-medium hover:opacity-90 transition-opacity">
-                    <MapPin className="w-4 h-4" /><span>Cómo llegar</span>
-                  </a>
-                </div>
-                <div className="w-full h-64 rounded-lg overflow-hidden">
-                  <Map defaultZoom={14} defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
-                    mapId="nerd-venue-detail-map"
-                    options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: true, fullscreenControl: false }}
-                    className="w-full h-full">
-                    <VenueMapContent venueLat={venue.latitude || -0.1807} venueLng={venue.longitude || -78.4678} onUserLocation={setUserLocation} />
-                  </Map>
-                </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">Pin rosa → tu ubicación · Pin morado → el local</p>
+          {/* ── CALIFICACIÓN ── */}
+          {user && userRole !== 'venue_admin' && (
+            <div className="mb-5 p-4 bg-[#161616] border border-[#242424] rounded-xl">
+              <p className="text-gray-300 text-sm font-medium mb-3">
+                {userExistingReview ? 'Tu calificación:' : '¿Cómo calificarías este local?'}
+              </p>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <motion.button key={value} type="button" whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
+                    disabled={submittingRating}
+                    onMouseEnter={() => setHoverRating(value)} onMouseLeave={() => setHoverRating(0)}
+                    onClick={() => handleSubmitRating(value)} className="disabled:opacity-50">
+                    <Star className={`w-8 h-8 transition-colors ${value <= (hoverRating || userRating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-700'}`} />
+                  </motion.button>
+                ))}
+                {submittingRating && <div className="w-4 h-4 border-2 border-[#7928ca] border-t-transparent rounded-full animate-spin ml-2" />}
               </div>
+            </div>
+          )}
 
-              <div className="grid md:grid-cols-2 gap-4 mb-8">
-                <InfoCard icon={MapPin} label="Dirección" value={venue.address} />
-                {venue.price_range && (
-                  <InfoCard icon={DollarSign} label="Rango de Precios"
-                    value={{ '$': 'Económico ($)', '$$': 'Medio ($$)', '$$$': 'Alto ($$$)' }[venue.price_range] || venue.price_range} />
-                )}
-                {venue.music_type && <InfoCard icon={Music} label="Tipo de Música" value={venue.music_type} />}
-                {hasHours && (
-                  <button onClick={() => setShowHours(true)}
-                    className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-center space-x-3 hover:border-[#ff0080]/40 transition-colors w-full text-left">
-                    <Clock className="w-5 h-5 text-[#ff0080] flex-shrink-0" />
-                    <div>
-                      <p className="text-gray-500 text-sm">Horario de Atención</p>
-                      <p className="text-white text-sm font-medium mt-0.5">Ver horarios →</p>
-                    </div>
-                  </button>
-                )}
+          {/* ── UBICACIÓN ── */}
+          <div className="mb-5">
+            <p className="text-white font-bold text-base mb-3">Ubicación</p>
+            <p className="text-gray-500 text-sm mb-3 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-[#7928ca]" />
+              {venue.address}
+            </p>
+            <div className="w-full h-48 rounded-xl overflow-hidden mb-3">
+              <Map
+                defaultZoom={14}
+                defaultCenter={{ lat: venue.latitude || -0.1807, lng: venue.longitude || -78.4678 }}
+                mapId="nerd-venue-detail-map"
+                options={{ styles: darkMapStyle, streetViewControl: false, mapTypeControl: false, zoomControl: false, fullscreenControl: false }}
+                className="w-full h-full"
+              >
+                <VenueMapContent
+                  venueLat={venue.latitude || -0.1807}
+                  venueLng={venue.longitude || -78.4678}
+                  onUserLocation={setUserLocation}
+                />
+              </Map>
+            </div>
+            <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white font-semibold text-sm"
+              style={{ background: 'linear-gradient(90deg, #7928ca, #ff0080)' }}>
+              <Navigation className="w-4 h-4" />
+              Cómo llegar
+              {userLocation && <span className="text-white/60 text-xs ml-1">· cerca de aquí</span>}
+            </a>
+          </div>
+
+          {/* ── HORARIO (si no está en quick chips ya) ── */}
+          {hasHours && !todayHours && (
+            <button onClick={() => setShowHours(true)}
+              className="w-full flex items-center gap-3 p-4 bg-[#161616] border border-[#242424] rounded-xl hover:border-[#7928ca]/30 transition-colors mb-5 text-left">
+              <Clock className="w-5 h-5 text-[#7928ca]" />
+              <div>
+                <p className="text-gray-500 text-xs">Horario de atención</p>
+                <p className="text-white text-sm font-medium">Ver horarios →</p>
               </div>
-            </>
+            </button>
           )}
 
         </motion.div>
       </div>
 
-      {/* MODAL PROMOCIONES */}
+      {/* ── MODAL PROMOCIONES ── */}
       <AnimatePresence>
         {showPromotions && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowPromotions(false)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 20 }}
-              onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between p-5 border-b border-[#1a1a1a]">
-                <div className="flex items-center space-x-2">
+            className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center p-0"
+            onClick={() => setShowPromotions(false)}>
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-[#111] rounded-t-3xl overflow-hidden border-t border-[#222]"
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+                <div className="flex items-center gap-2">
                   <Tag className="w-5 h-5 text-[#ff0080]" />
                   <h3 className="text-white font-bold text-lg">Promociones</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-[#ff0080] text-white text-xs font-bold">{promotions.length}</span>
                 </div>
-                <button onClick={() => setShowPromotions(false)} className="p-2 rounded-full hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors">
+                <button onClick={() => setShowPromotions(false)} className="p-2 rounded-full hover:bg-white/5 text-gray-400">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
                 {promotions.map((promo, i) => (
                   <motion.div key={promo.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }} className="p-4 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a]">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff0080] to-[#7928ca] flex items-center justify-center flex-shrink-0">
+                    transition={{ delay: i * 0.05 }}
+                    className="p-4 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a]">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #ff0080, #7928ca)' }}>
                         <Tag className="w-4 h-4 text-white" />
                       </div>
                       <div>
-                        <p className="text-white font-semibold mb-1">{promo.title}</p>
-                        {promo.description && <p className="text-gray-400 text-sm whitespace-pre-line">{promo.description}</p>}
+                        <p className="text-white font-semibold">{promo.title}</p>
+                        {promo.description && <p className="text-gray-400 text-sm mt-0.5 whitespace-pre-line">{promo.description}</p>}
                       </div>
                     </div>
                   </motion.div>
                 ))}
               </div>
+              <div className="h-6" />
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* LIGHTBOX */}
+      {/* ── LIGHTBOX ── */}
       <AnimatePresence>
         {lightboxIndex !== null && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
-            onClick={() => setLightboxIndex(null)} onTouchStart={handleLightboxTouchStart} onTouchEnd={handleLightboxTouchEnd}>
-            <button onClick={() => setLightboxIndex(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10">
+            onClick={() => setLightboxIndex(null)}
+            onTouchStart={handleLightboxTouchStart} onTouchEnd={handleLightboxTouchEnd}>
+            <button onClick={() => setLightboxIndex(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white z-10">
               <X className="w-6 h-6" />
             </button>
             {photoUrls.length > 1 && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i - 1 + photoUrls.length) % photoUrls.length); }}
-                  className="absolute left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10">
+                  className="absolute left-4 p-2 rounded-full bg-white/10 text-white z-10">
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i + 1) % photoUrls.length); }}
-                  className="absolute right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10">
+                  className="absolute right-4 p-2 rounded-full bg-white/10 text-white z-10">
                   <ChevronRight className="w-6 h-6" />
                 </button>
               </>
@@ -648,7 +818,7 @@ export default function VenueDetail() {
                 transition={{ duration: 0.2 }} onClick={(e) => e.stopPropagation()}
                 className="max-w-[92vw] max-h-[88vh] object-contain rounded-lg" />
             </AnimatePresence>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
               {photoUrls.map((_, i) => (
                 <button key={i} onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}
                   className={`w-2 h-2 rounded-full transition-all ${i === lightboxIndex ? 'bg-white scale-125' : 'bg-white/30'}`} />
@@ -658,20 +828,24 @@ export default function VenueDetail() {
         )}
       </AnimatePresence>
 
-      {/* MODAL HORARIOS */}
+      {/* ── MODAL HORARIOS ── */}
       <AnimatePresence>
         {showHours && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowHours(false)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 20 }}
-              onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between p-5 border-b border-[#1a1a1a]">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-[#ff0080]" />
+            className="fixed inset-0 z-50 bg-black/80 flex items-end justify-center"
+            onClick={() => setShowHours(false)}>
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-[#111] rounded-t-3xl overflow-hidden border-t border-[#222]"
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-[#7928ca]" />
                   <h3 className="text-white font-bold text-lg">Horarios</h3>
                 </div>
-                <button onClick={() => setShowHours(false)} className="p-2 rounded-full hover:bg-[#1a1a1a] text-gray-400 hover:text-white transition-colors">
+                <button onClick={() => setShowHours(false)} className="p-2 rounded-full hover:bg-white/5 text-gray-400">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -679,32 +853,27 @@ export default function VenueDetail() {
                 {DAYS_ORDER.map((dayKey, i) => {
                   const hours = openingHours[dayKey];
                   if (!hours?.open || !hours?.close) return null;
+                  const isToday = new Date().getDay() === ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf(dayKey);
                   return (
                     <motion.div key={dayKey} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }} className="flex items-center justify-between py-2 px-3 rounded-lg bg-[#1a1a1a]">
-                      <span className="text-gray-400 text-sm w-24">{DAYS_TRANSLATION[dayKey]}</span>
+                      transition={{ delay: i * 0.04 }}
+                      className={`flex items-center justify-between py-2.5 px-4 rounded-xl ${
+                        isToday ? 'bg-[#7928ca]/15 border border-[#7928ca]/30' : 'bg-[#1a1a1a]'
+                      }`}>
+                      <span className={`text-sm w-24 ${isToday ? 'text-[#a855f7] font-bold' : 'text-gray-400'}`}>
+                        {DAYS_TRANSLATION[dayKey]}{isToday ? ' ·hoy' : ''}
+                      </span>
                       <span className="text-white font-medium text-sm">{hours.open} - {hours.close}</span>
                     </motion.div>
                   );
                 })}
               </div>
+              <div className="h-6" />
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-    </div>
-  );
-}
-
-function InfoCard({ icon: Icon, label, value }) {
-  return (
-    <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-4 flex items-start space-x-3">
-      <Icon className="w-5 h-5 text-[#ff0080] flex-shrink-0 mt-0.5" />
-      <div>
-        <p className="text-gray-500 text-sm mb-1">{label}</p>
-        <p className="text-white">{value}</p>
-      </div>
     </div>
   );
 }
