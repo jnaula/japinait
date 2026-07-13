@@ -504,6 +504,33 @@ export default function Home() {
               </div>
             </section>
 
+            {/* LICORERÍAS CERCA DE TI — carrusel */}
+            {(() => {
+              const licorerias = venues.filter((v) => v.venue_types?.name === 'Licorería');
+              const licType = venueTypes.find((t) => t.name === 'Licorería');
+              if (licorerias.length === 0) return null;
+              return (
+                <section className="mb-7">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-white font-bold text-base">🍾 Licorerías cerca de ti</h2>
+                    <button onClick={() => licType && setSelectedType(licType.id)}
+                      className="flex items-center gap-1 text-green-400 text-xs font-semibold">
+                      Ver todas <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
+                    {licorerias.map((venue, i) => (
+                      <motion.div key={venue.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex-shrink-0" style={{ width: '72vw', maxWidth: 280 }}>
+                        <LicoreriaCard venue={venue} />
+                      </motion.div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })()}
+
             {(() => {
               const nonLicVenues = venues.filter((v) => v.venue_types?.name !== 'Licorería');
               return (
@@ -568,32 +595,35 @@ export default function Home() {
               );
             })()}
 
-            {/* LICORERÍAS CERCA DE TI — carrusel */}
+            {/* LICORERÍAS — sección separada en el grid */}
             {(() => {
               const licorerias = venues.filter((v) => v.venue_types?.name === 'Licorería');
               const licType = venueTypes.find((t) => t.name === 'Licorería');
               if (licorerias.length === 0) return null;
               return (
                 <section className="mb-8">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-white font-bold text-base">🍾 Licorerías cerca de ti</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-white font-bold text-base">🍾 Licorerías</h2>
+                      <p className="text-gray-500 text-xs mt-0.5">{licorerias.length} licorerías disponibles</p>
+                    </div>
                     <button onClick={() => licType && setSelectedType(licType.id)}
                       className="flex items-center gap-1 text-green-400 text-xs font-semibold">
                       Ver todas <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
+                  <div className="grid grid-cols-2 gap-4">
                     {licorerias.map((venue, i) => (
-                      <motion.div key={venue.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="flex-shrink-0" style={{ width: '72vw', maxWidth: 280 }}>
-                        <LicoreriaCard venue={venue} />
+                      <motion.div key={venue.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                        <VenueCard venue={venue} />
                       </motion.div>
                     ))}
                   </div>
                 </section>
               );
             })()}
+
+            {/* fin todos los locales */}
           </>
         )}
 
