@@ -318,22 +318,8 @@ export default function VenueDetail() {
   const displayReviews = venue.total_reviews || reviews.length;
 
   const phoneClean = venue.phone?.replace(/\s/g, '') || '';
-
-  // Normaliza cualquier formato ecuatoriano a internacional sin +
-  // 0999123456 → 593999123456
-  // +593999123456 → 593999123456
-  // 099 912 3456 → 593999123456
-  function normalizeEcPhone(raw) {
-    if (!raw) return '';
-    const digits = raw.replace(/\D/g, '');
-    if (digits.startsWith('593')) return digits;
-    if (digits.startsWith('0')) return '593' + digits.slice(1);
-    if (digits.length >= 9) return '593' + digits;
-    return digits;
-  }
-
-  const whatsappNumber = normalizeEcPhone(venue.whatsapp || venue.phone);
-  const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null;
+  const whatsappClean = venue.whatsapp?.replace(/\s/g, '') || '';
+  const whatsappUrl = whatsappClean ? `https://wa.me/${whatsappClean.replace('+', '')}` : null;
 
   const venueDetails = venue.venue_details || {};
   const venueConfig = getVenueConfig(venue.venue_types?.name);
@@ -595,24 +581,40 @@ export default function VenueDetail() {
           )}
 
           {/* ── LAYOUT LICORERÍA ── */}
-          {isLicoreria && (
+          {isLicoreria && (() => {
+            // Compatibilidad: productos pueden estar en venue_details.productos
+            // o en venue.available_products (campo legacy)
+            const productos = venueDetails.productos?.length > 0
+              ? venueDetails.productos
+              : (venue.available_products || []);
+
+            // Delivery puede venir de venue_details o del campo legacy has_delivery
+            const hasDelivery = venueDetails.delivery || venue.has_delivery;
+            const hasCompraEnTienda = venueDetails.compra_en_tienda;
+            const hasRecogeEnLocal = venueDetails.recoge_en_local;
+            const tiempoEstimado = venueDetails.tiempo_estimado || venue.delivery_time;
+            const metodosPago = venueDetails.metodos_pago?.length > 0
+              ? venueDetails.metodos_pago
+              : (venue.payment_methods || []);
+
+            return (
             <div className="space-y-4 mb-5">
 
               {/* Servicios de entrega */}
               <div className="grid grid-cols-3 gap-2">
-                {venueDetails.delivery && (
+                {hasDelivery && (
                   <div className="flex flex-col items-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl">
                     <Truck className="w-5 h-5 text-[#7928ca]" />
                     <span className="text-white text-xs font-semibold text-center">Delivery</span>
                   </div>
                 )}
-                {venueDetails.compra_en_tienda && (
+                {hasCompraEnTienda && (
                   <div className="flex flex-col items-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl">
                     <Package className="w-5 h-5 text-[#7928ca]" />
                     <span className="text-white text-xs font-semibold text-center">En tienda</span>
                   </div>
                 )}
-                {venueDetails.recoge_en_local && (
+                {hasRecogeEnLocal && (
                   <div className="flex flex-col items-center gap-1 p-3 bg-[#161616] border border-[#242424] rounded-xl">
                     <MapPin className="w-5 h-5 text-[#7928ca]" />
                     <span className="text-white text-xs font-semibold text-center">Recoge aquí</span>
@@ -621,22 +623,22 @@ export default function VenueDetail() {
               </div>
 
               {/* Tiempo estimado */}
-              {venueDetails.tiempo_estimado && (
+              {tiempoEstimado && (
                 <div className="flex items-center gap-3 p-4 bg-[#161616] border border-[#242424] rounded-xl">
                   <Clock className="w-5 h-5 text-[#7928ca] flex-shrink-0" />
                   <div>
                     <p className="text-gray-500 text-xs">Tiempo estimado</p>
-                    <p className="text-white font-semibold text-sm">{venueDetails.tiempo_estimado}</p>
+                    <p className="text-white font-semibold text-sm">{tiempoEstimado}</p>
                   </div>
                 </div>
               )}
 
               {/* Productos */}
-              {venueDetails.productos?.length > 0 && (
+              {productos.length > 0 && (
                 <div>
                   <p className="text-white font-bold text-sm mb-3">Productos disponibles</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {venueDetails.productos.map((product) => (
+                    {productos.map((product) => (
                       <div key={product}
                         className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#161616] border border-[#242424] text-sm text-white">
                         <span>{PRODUCT_EMOJIS[product] || '📦'}</span>
@@ -648,11 +650,11 @@ export default function VenueDetail() {
               )}
 
               {/* Métodos de pago */}
-              {venueDetails.metodos_pago?.length > 0 && (
+              {metodosPago.length > 0 && (
                 <div>
                   <p className="text-white font-bold text-sm mb-3">Métodos de pago</p>
                   <div className="flex flex-wrap gap-2">
-                    {venueDetails.metodos_pago.map((method) => (
+                    {metodosPago.map((method) => (
                       <span key={method}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7928ca]/10 border border-[#7928ca]/20 text-purple-300 text-xs font-medium">
                         <CreditCard className="w-3 h-3" /> {method}
@@ -675,7 +677,8 @@ export default function VenueDetail() {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
           {/* ── CALIFICACIÓN ── */}
           {user && userRole !== 'venue_admin' && (
