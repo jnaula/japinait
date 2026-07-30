@@ -318,8 +318,18 @@ export default function VenueDetail() {
   const displayReviews = venue.total_reviews || reviews.length;
 
   const phoneClean = venue.phone?.replace(/\s/g, '') || '';
-  const whatsappClean = venue.whatsapp?.replace(/\s/g, '') || '';
-  const whatsappUrl = whatsappClean ? `https://wa.me/${whatsappClean.replace('+', '')}` : null;
+
+function normalizeEcPhone(raw) {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('593')) return digits;
+  if (digits.startsWith('0')) return '593' + digits.slice(1);
+  if (digits.length >= 9) return '593' + digits;
+  return digits;
+}
+
+const whatsappNumber = normalizeEcPhone(venue.whatsapp || venue.phone);
+const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}` : null;
 
   const venueDetails = venue.venue_details || {};
   const venueConfig = getVenueConfig(venue.venue_types?.name);
