@@ -2,18 +2,6 @@ default_platform(:ios)
 
 platform :ios do
 
-  desc "Sync certificates"
-  lane :certificates do
-    match(
-      type: "appstore",
-      app_identifier: "com.japinait.app",
-      git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
-      git_basic_authorization: Base64.strict_encode64("#{ENV["GH_PAT"]}:#{ENV["GH_PAT"]}"),
-      keychain_password: ENV["MATCH_PASSWORD"],
-      readonly: false
-    )
-  end
-
   desc "Build and upload to App Store"
   lane :deploy do
     api_key = app_store_connect_api_key(
@@ -23,7 +11,15 @@ platform :ios do
       is_key_content_base64: false,
     )
 
-    certificates
+    match(
+      type: "appstore",
+      app_identifier: "com.japinait.app",
+      git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
+      git_basic_authorization: Base64.strict_encode64("#{ENV["GH_PAT"]}:#{ENV["GH_PAT"]}"),
+      keychain_password: ENV["MATCH_PASSWORD"],
+      api_key: api_key,
+      readonly: false
+    )
 
     build_app(
       scheme: "App",
