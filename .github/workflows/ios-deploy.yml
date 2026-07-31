@@ -1,0 +1,50 @@
+name: iOS Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Build web
+        run: npm run build
+
+      - name: Instalar Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      - name: Agregar plataforma iOS
+        run: npx cap add ios
+
+      - name: Sincronizar Capacitor
+        run: npx cap sync ios
+
+      - name: Instalar Ruby y Fastlane
+        run: |
+          gem install bundler
+          gem install fastlane
+
+      - name: Ejecutar Fastlane deploy
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_STORE_CONNECT_TEAM_ID: ${{ secrets.APP_STORE_CONNECT_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: fastlane ios deploy

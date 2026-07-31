@@ -1,5 +1,11 @@
 {
   "appId": "com.japinait.app",
   "appName": "JapiNait",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
 }

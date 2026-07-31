@@ -1,0 +1,43 @@
+default_platform(:ios)
+
+platform :ios do
+
+  desc "Sync certificates"
+  lane :certificates do
+    match(
+      type: "appstore",
+      app_identifier: "com.japinait.app",
+      git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
+      password: ENV["MATCH_PASSWORD"],
+      readonly: false
+    )
+  end
+
+  desc "Build and upload to App Store"
+  lane :deploy do
+    certificates
+
+    build_app(
+      scheme: "App",
+      workspace: "ios/App/App.xcworkspace",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          "com.japinait.app" => "match AppStore com.japinait.app"
+        }
+      }
+    )
+
+    upload_to_app_store(
+      api_key: {
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: false,
+      },
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: false
+    )
+  end
+end
