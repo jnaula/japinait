@@ -3,12 +3,13 @@ default_platform(:ios)
 platform :ios do
 
   desc "Sync certificates"
-  lane :certificates do
+ lane :certificates do
     match(
       type: "appstore",
       app_identifier: "com.japinait.app",
       git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
-      password: ENV["MATCH_PASSWORD"],
+      git_basic_authorization: Base64.strict_encode64("#{ENV["GH_PAT"]}:#{ENV["GH_PAT"]}"),
+      keychain_password: ENV["MATCH_PASSWORD"],
       readonly: false
     )
   end
