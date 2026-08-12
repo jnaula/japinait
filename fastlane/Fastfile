@@ -41,7 +41,8 @@ platform :ios do
         provisioningProfiles: {
           "com.japinait.app" => "match AppStore com.japinait.app"
         }
-      }
+      },
+      xcargs: "OTHER_CODE_SIGN_FLAGS=\"--timestamp=none\""
     )
 
     upload_to_app_store(
