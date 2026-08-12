@@ -14,7 +14,7 @@ platform :ios do
     match(
       type: "appstore",
       app_identifier: "com.japinait.app",
-      git_url: "https://#{ENV["GH_PAT"]}@github.com/tu-usuario/japinait-certificates.git",
+      git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
       git_basic_authorization: Base64.strict_encode64("#{ENV["GH_PAT"]}:#{ENV["GH_PAT"]}"),
       keychain_password: ENV["MATCH_PASSWORD"],
       api_key: api_key,
