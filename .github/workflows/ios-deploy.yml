@@ -29,13 +29,14 @@ jobs:
         run: npm install -g @capacitor/cli
 
       - name: Agregar plataforma iOS
-        run: npx cap add ios || true
+        run: npx cap add ios 
 
       - name: Sincronizar Capacitor
         run: npx cap sync ios
 
       - name: Instalar CocoaPods
         run: |
+          sudo gem install CocoaPods
           cd ios/App
           pod install
 
