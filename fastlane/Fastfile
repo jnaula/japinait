@@ -14,11 +14,20 @@ platform :ios do
     match(
       type: "appstore",
       app_identifier: "com.japinait.app",
-      git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
+      git_url: "https://#{ENV["GH_PAT"]}@github.com/tu-usuario/japinait-certificates.git",
       git_basic_authorization: Base64.strict_encode64("#{ENV["GH_PAT"]}:#{ENV["GH_PAT"]}"),
       keychain_password: ENV["MATCH_PASSWORD"],
       api_key: api_key,
       readonly: false
+    )
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "ios/App/App.xcodeproj",
+      team_id: ENV["APP_STORE_CONNECT_TEAM_ID"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: "match AppStore com.japinait.app",
+      targets: ["App"]
     )
 
     build_app(
