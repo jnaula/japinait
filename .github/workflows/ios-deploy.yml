@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -28,10 +29,15 @@ jobs:
         run: npm install -g @capacitor/cli
 
       - name: Agregar plataforma iOS
-        run: npx cap add ios
+        run: npx cap add ios || true
 
       - name: Sincronizar Capacitor
         run: npx cap sync ios
+
+      - name: Instalar CocoaPods
+        run: |
+          cd ios/App
+          pod install
 
       - name: Instalar Ruby y Fastlane
         run: |
