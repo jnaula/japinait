@@ -30,21 +30,9 @@ jobs:
 
       - name: Agregar plataforma iOS
         run: npx cap add ios 
-        
-      - name: ver estructura de carpeta de ios
-        run: |
-          ls -la
-          ls -la ios || echo "no existe ios"
-          ls -la ios/App || echo "no existe ios/App"
 
       - name: Sincronizar Capacitor
         run: npx cap sync ios
-
-      - name: Instalar CocoaPods
-        run: |
-          sudo gem install cocoapods
-          cd ios/App
-          pod install
 
       - name: Instalar Ruby y Fastlane
         run: |
