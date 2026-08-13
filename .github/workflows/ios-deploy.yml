@@ -43,6 +43,15 @@ jobs:
       - name:  Verificar red hacia Apple timestamp server
         run: curl -v --max-time 5 http://timestamp.apple.com/ts01  || echo "TIMESTAMP SERVER NO RESPONDE"     
 
+      - name: Crear keychain manualmente
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          security create-keychain -p "$MATCH_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$MATCH_PASSWORD" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+      
       - name: Ejecutar Fastlane deploy
         env:
           GH_PAT: ${{ secrets.GH_PAT }}

@@ -4,25 +4,26 @@ platform :ios do
 
   desc "Build and upload to App Store"
   lane :deploy do
-    setup_ci
-
-    api_key = app_store_connect_api_key(
-      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_API_KEY"],
-      is_key_content_base64: true,
-    )
+    keychain_password = ENV["MATCH_PASSWORD"]
 
     match(
       type: "appstore",
       app_identifier: "com.japinait.app",
       git_url: "https://#{ENV["GH_PAT"]}@github.com/jnaula/japinait-certificates.git",
       git_basic_authorization: Base64.strict_encode64("#{ENV["GH_PAT"]}:#{ENV["GH_PAT"]}"),
-      keychain_password: ENV["MATCH_PASSWORD"],
-      keychain_name: "fastlane_tmp_keychain",
-      api_key: api_key,
+      keychain_name: "build.keychain",
+      keychain_password: keychain_password,
+      api_key: app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: true,
+      ),
       readonly: false
     )
+
+    # Fuerza el acceso total del keychain a codesign, sin esto se cuelga
+    sh("security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k #{keychain_password} build.keychain")
 
     update_code_signing_settings(
       use_automatic_signing: false,
@@ -41,12 +42,16 @@ platform :ios do
         provisioningProfiles: {
           "com.japinait.app" => "match AppStore com.japinait.app"
         }
-      },
-      xcargs: 'OTHER_CODE_SIGN_FLAGS=--timestamp=none CODE_SIGN_STYLE=Manual'
+      }
     )
 
     upload_to_app_store(
-      api_key: api_key,
+      api_key: app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY"],
+        is_key_content_base64: true,
+      ),
       skip_metadata: true,
       skip_screenshots: true,
       submit_for_review: false
