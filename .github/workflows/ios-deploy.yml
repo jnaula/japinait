@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: macos-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout código
@@ -38,6 +39,9 @@ jobs:
         run: |
           gem install bundler
           gem install fastlane
+
+      - name:  Verificar red hacia Apple timestamp server
+        run: curl -v --max-time 5 http://timestamp.apple.com/ts01  || echo "TIMESTAMP SERVER NO RESPONDE"     
 
       - name: Ejecutar Fastlane deploy
         env:
