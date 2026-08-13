@@ -32,6 +32,9 @@ jobs:
       - name: Agregar plataforma iOS
         run: npx cap add ios 
 
+      - name: Generar iconos iOS
+        run: npx capacitor-assets generate --ios
+      
       - name: Sincronizar Capacitor
         run: npx cap sync ios
 
